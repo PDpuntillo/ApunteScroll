@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ApunteScroll</string>
 
     <!-- Barra de navegación -->
@@ -8,13 +8,140 @@
     <string name="nav_perfil">Perfil</string>
     <string name="nav_ajustes">Ajustes</string>
 
+    <!-- Acciones comunes -->
+    <string name="accion_volver">Volver</string>
+    <string name="accion_crear">Crear</string>
+    <string name="accion_guardar">Guardar</string>
+    <string name="accion_cancelar">Cancelar</string>
+    <string name="accion_borrar">Borrar</string>
+    <string name="accion_reintentar">Reintentar</string>
+    <string name="accion_mas_opciones">Más opciones</string>
+
     <!-- Inicio (feed) -->
     <string name="inicio_titulo">Tu feed de apuntes</string>
     <string name="inicio_vacio">Cuando importes un PDF, sus tarjetas van a aparecer acá para scrollear.</string>
+    <string name="inicio_ir_biblioteca">Ir a la Biblioteca</string>
+
+    <!-- Feed (F2) -->
+    <string name="feed_lo_se">Lo sé</string>
+    <string name="feed_estado_sabida">Marcada como sabida</string>
+    <string name="feed_estado_no_sabida">Sin marcar</string>
+    <string name="feed_guardar">Guardar</string>
+    <string name="feed_quitar_guardada">Quitar de guardadas</string>
+    <string name="feed_filtro_todas">Todas</string>
+    <string name="feed_filtro_guardadas">Guardadas</string>
+    <string name="feed_al_dia_titulo">Estás al día</string>
+    <string name="feed_al_dia_fin">Ya pasaste por todas las tarjetas nuevas. Las que todavía no sabés vuelven cuando empezás de nuevo.</string>
+    <string name="feed_al_dia_sin_pendientes">No quedan tarjetas para ver acá: las marcaste todas como sabidas.</string>
+    <string name="feed_volver_a_empezar">Empezar de nuevo</string>
+    <string name="feed_fin_guardadas_titulo">Son todas tus guardadas</string>
+    <string name="feed_fin_guardadas">Para guardar más, tocá el marcador en cualquier tarjeta del feed.</string>
+    <string name="feed_ver_todas">Ver todas las materias</string>
+    <string name="feed_hilo_posicion">%1$d/%2$d</string>
+    <string name="feed_hilo_descripcion">Ver el hilo completo: tarjeta %1$d de %2$d</string>
+    <string name="feed_detalle_documento">· %1$s</string>
+    <string name="feed_detalle_pagina">· p. %1$d</string>
+    <string name="feed_detalle_carrusel">%1$s · p. %2$d</string>
+    <string name="feed_accion_lo_se">Marcar como sabida</string>
+    <string name="feed_seguir_leyendo">Seguir leyendo</string>
+    <string name="feed_historia_con_nuevas">%1$s, con tarjetas nuevas</string>
+    <string name="feed_cambiar_a_carrusel">Ver como carrusel</string>
+    <string name="feed_cambiar_a_hilo">Ver como hilo</string>
+    <string name="feed_hay_nuevas">Hay tarjetas nuevas</string>
+    <string name="feed_rearmando">Actualizando tus tarjetas…</string>
+    <string name="feed_rearmando_detalle">La app mejoró cómo arma las tarjetas: se vuelven a armar tus PDFs. Lo que ya marcaste se conserva.</string>
+    <string name="hilo_no_existe_titulo">Esta sección ya no está</string>
+    <string name="hilo_no_existe">El PDF se borró o sus tarjetas se volvieron a armar.</string>
 
     <!-- Biblioteca -->
     <string name="biblioteca_titulo">Biblioteca</string>
-    <string name="biblioteca_vacia">Acá vas a ver tus materias y los PDFs importados.</string>
+    <string name="biblioteca_vacia_titulo">Todavía no hay apuntes</string>
+    <string name="biblioteca_vacia">Importá un PDF de estudio y la app lo convierte en tarjetas para scrollear.</string>
+    <string name="resumen_materia">%1$s · %2$s</string>
+    <plurals name="cantidad_pdfs">
+        <item quantity="one">%d PDF</item>
+        <item quantity="other">%d PDFs</item>
+    </plurals>
+    <plurals name="cantidad_tarjetas">
+        <item quantity="one">%d tarjeta</item>
+        <item quantity="other">%d tarjetas</item>
+    </plurals>
+    <plurals name="cantidad_secciones">
+        <item quantity="one">%d sección</item>
+        <item quantity="other">%d secciones</item>
+    </plurals>
+    <plurals name="cantidad_paginas">
+        <item quantity="one">%d página</item>
+        <item quantity="other">%d páginas</item>
+    </plurals>
+    <plurals name="procesando_pdfs">
+        <item quantity="one">Procesando %d PDF…</item>
+        <item quantity="other">Procesando %d PDFs…</item>
+    </plurals>
+
+    <!-- Importar -->
+    <string name="importar_pdf">Importar PDF</string>
+    <string name="importar_agregar">Agregar PDF</string>
+    <string name="importar_copiando">Copiando PDFs…</string>
+    <string name="importar_elegir_materia">¿A qué materia van?</string>
+    <plurals name="importar_listo">
+        <item quantity="one">Se importó %d PDF. Las tarjetas aparecen cuando termine de procesarse.</item>
+        <item quantity="other">Se importaron %d PDFs. Las tarjetas aparecen cuando terminen de procesarse.</item>
+    </plurals>
+    <plurals name="importar_fallidos">
+        <item quantity="one">No se pudo importar %d PDF.</item>
+        <item quantity="other">No se pudieron importar %d PDFs.</item>
+    </plurals>
+
+    <!-- Materias -->
+    <string name="materia_nueva">Materia nueva</string>
+    <string name="materia_editar">Editar materia</string>
+    <string name="materia_borrar">Borrar materia</string>
+    <string name="materia_crear_sin_pdf">Crear una materia primero</string>
+    <string name="materia_nombre">Nombre</string>
+    <string name="materia_nombre_ejemplo">Economía I</string>
+    <string name="materia_nombre_vacio">Escribí un nombre.</string>
+    <string name="materia_emoji">Emoji</string>
+    <string name="materia_color">Color</string>
+    <string name="materia_vacia_titulo">Sin PDFs todavía</string>
+    <string name="materia_vacia">Importá los apuntes de esta materia para convertirlos en tarjetas.</string>
+    <string name="materia_borrar_titulo">¿Borrar «%1$s»?</string>
+    <string name="materia_borrar_texto">Se borran la materia, sus PDFs y todas sus tarjetas. No se puede deshacer.</string>
+    <string name="color_indigo">Índigo</string>
+    <string name="color_azul">Azul</string>
+    <string name="color_turquesa">Turquesa</string>
+    <string name="color_verde">Verde</string>
+    <string name="color_ambar">Ámbar</string>
+    <string name="color_naranja">Naranja</string>
+    <string name="color_rojo">Rojo</string>
+    <string name="color_rosa">Rosa</string>
+    <string name="color_violeta">Violeta</string>
+    <string name="color_gris">Gris</string>
+
+    <!-- Documentos -->
+    <string name="estado_pendiente">En espera…</string>
+    <string name="estado_extrayendo">Leyendo páginas: %1$d de %2$d</string>
+    <string name="estado_armando">Armando tarjetas…</string>
+    <string name="estado_error">No se pudo procesar el PDF.</string>
+    <plurals name="estado_con_ocr">
+        <item quantity="one">%d escaneada</item>
+        <item quantity="other">%d escaneadas</item>
+    </plurals>
+    <string name="documento_borrar_titulo">¿Borrar «%1$s»?</string>
+    <string name="documento_borrar_texto">Se borran el PDF y sus tarjetas. No se puede deshacer.</string>
+    <string name="documento_procesando_titulo">Todavía se está procesando</string>
+    <string name="documento_procesando">Las tarjetas van a aparecer acá cuando termine.</string>
+    <string name="resumen_documento">%1$s en %2$s</string>
+    <string name="seccion_pagina">Página %1$d</string>
+    <string name="tarjeta_pagina">p. %1$d</string>
+    <string name="tarjeta_ocr">Texto reconocido (OCR)</string>
+
+    <!-- Página original -->
+    <string name="pagina_titulo">Página %1$d de %2$d</string>
+    <string name="pagina_anterior">Página anterior</string>
+    <string name="pagina_siguiente">Página siguiente</string>
+    <string name="pagina_descripcion" tools:ignore="PluralsCandidate">Página %1$d del PDF original</string>
+    <string name="pagina_error">No se pudo mostrar la página.</string>
 
     <!-- Perfil -->
     <string name="perfil_titulo">Perfil</string>
@@ -23,6 +150,7 @@
     <!-- Ajustes -->
     <string name="ajustes_titulo">Ajustes</string>
     <string name="ajustes_largo_tarjeta">Largo de las tarjetas</string>
+    <string name="ajustes_largo_explicacion">Se aplica a los PDFs que importes desde ahora.</string>
     <string name="ajustes_largo_corta">Corta (300 caracteres)</string>
     <string name="ajustes_largo_media">Media (450 caracteres)</string>
     <string name="ajustes_largo_larga">Larga (600 caracteres)</string>

@@ -15,6 +15,8 @@ pluginManagement {
         // AGP 9 trae Kotlin incorporado: no se aplica org.jetbrains.kotlin.android.
         // El plugin de Compose va siempre con la misma versión que Kotlin.
         id("org.jetbrains.kotlin.plugin.compose") version "2.4.21"
+        // Rutas de navegación con tipos (@Serializable). También va con la versión de Kotlin.
+        id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21"
         id("com.google.devtools.ksp") version "2.3.14"
         id("androidx.room") version "2.8.5"
     }

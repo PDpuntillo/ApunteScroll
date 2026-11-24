@@ -4,8 +4,9 @@ App Android que convierte tus PDFs de estudio en un feed para scrollear, con el 
 redes sociales. Cuando abres Instagram o X, ApunteScroll se pone encima y te muestra tus
 apuntes en vez del feed real. Se publica en **Google Play**.
 
-> Estado: **F0 (base) hecha**: compila y pasa pruebas y lint; falta probarla en la S23. Lo
-> demás es el plan para las fases siguientes.
+> Estado: **F0 (base), F1 (PDF → tarjetas) y F2 (feed) implementadas y probadas en la S23**
+> con un PDF digital (65 páginas) y un libro escaneado (176 páginas). Lo demás es el plan para
+> las fases siguientes.
 
 ---
 
@@ -18,7 +19,7 @@ apuntes en vez del feed real. Se publica en **Google Play**.
 | Contenido | El **texto** de los PDFs, mostrado como texto (no capturas de páginas). Si una página es escaneada, se pasa por **OCR en el teléfono**. |
 | Manuscritos | Fuera de alcance por ahora. El OCR apunta a texto impreso. |
 | IA | **No** por ahora. Queda como idea futura (sección 12). |
-| Datos | Todo local en el teléfono. Sin cuentas ni servidor. |
+| Datos | Tus apuntes (PDFs, texto y tarjetas) no salen del teléfono. Sin cuentas ni servidor propio. ML Kit (el OCR de Google) sí envía diagnósticos a Google (ver sección 10). |
 | Funciones de estudio | Repaso espaciado, preguntas en el feed, materias y filtros, racha y estadísticas. |
 | Pase | Para entrar a la red real, estudias 15 tarjetas y ganas 10 minutos (configurable). |
 | Tarjetas | ~450 caracteres por defecto (configurable: 300 / 450 / 600). |
@@ -32,7 +33,7 @@ apuntes en vez del feed real. Se publica en **Google Play**.
 1. **Importar**: eliges uno o varios PDFs (selector de archivos de Android) y los asignas a una
    materia (nueva o existente).
 2. **Procesar**: la app extrae el texto de cada página en segundo plano. Las páginas sin texto
-   (escaneadas) pasan por OCR. Se ve el avance ("Procesando 12/40").
+   (escaneadas) pasan por OCR. Se ve el avance ("Leyendo páginas: 12 de 40").
 3. **Tarjetas**: el texto se limpia y se corta en *tarjetas* (fragmentos cortos, legibles en el
    celular), agrupadas por sección del apunte.
 4. **Scrollear**: el feed muestra las tarjetas con el estilo *Hilo* (tipo X) o *Carrusel*
@@ -50,12 +51,26 @@ apuntes en vez del feed real. Se publica en **Google Play**.
 |---|---|
 | Texto digital | [PdfBox-Android](https://github.com/TomRoush/PdfBox-Android) (`PDFTextStripper`, de a una página para no llenar la memoria). Licencia Apache 2.0, Java puro (sin librerías nativas). |
 | ¿Es escaneada? | Si la página da menos de ~40 caracteres alfanuméricos, se considera imagen. |
-| OCR | Se renderiza la página con `PdfRenderer` de Android (~2000 px de ancho) y se pasa por **ML Kit Text Recognition** (alfabeto latino). Los bloques se ordenan de arriba abajo y de izquierda a derecha. Se usa la variante que el teléfono descarga por **Google Play services** (APK más chico, y menos riesgo con el requisito de 16 KB de la sección 10). Necesita internet una sola vez, para bajar el modelo. |
+| OCR | Se renderiza la página con `PdfRenderer` de Android (~2000 px de ancho) y se pasa por **ML Kit Text Recognition** (alfabeto latino). Se usa el orden de lectura que da ML Kit (bloques y renglones), que respeta columnas. Se usa la variante que el teléfono descarga por **Google Play services** (APK más chico, y menos riesgo con el requisito de 16 KB de la sección 10). Google Play services baja el modelo al instalar desde Play, o la primera vez que se usa (por ejemplo, después de `adb install`): esa vez necesita internet. El worker reintenta unos 18 minutos sin guardar la página; si el modelo no llegó, el PDF queda en error con "Tocá Reintentar", y Reintentar sigue desde esa página. Solo pasan por OCR las páginas con poco texto que tienen imágenes, y si una página falla se sigue con las demás. |
 | Resultado | Texto por página, con su origen (`TEXTO` u `OCR`). |
 
-Corre en WorkManager, de a tandas cortas de páginas, **sin servicio en primer plano** (cada tipo
-de servicio en primer plano exige una declaración aparte en Play Console). Sigue aunque cierres
-la app y las tarjetas aparecen a medida que se procesan.
+Corre en WorkManager, en pasadas de hasta 8 minutos (WorkManager corta a los 10), **sin servicio
+en primer plano** (cada tipo de servicio en primer plano exige una declaración aparte en Play
+Console). Sigue aunque cierres la app. Tiene dos etapas:
+
+1. **Leyendo páginas** (`EXTRAYENDO`): el texto de cada página se guarda apenas sale, así una
+   pasada cortada sigue donde quedó. La pantalla de la materia muestra "Leyendo páginas: 12
+   de 40" (y la Biblioteca, "Procesando 1 PDF…").
+2. **Armando tarjetas** (`ARMANDO`): limpieza y corte de todo el documento junto, porque
+   detectar encabezados y pies repetidos necesita ver todas las páginas. Por eso las tarjetas
+   aparecen todas juntas al final, no de a una.
+
+Los PDFs se copian a la carpeta privada apenas se eligen (el permiso para leer lo que devuelve
+el selector de archivos puede vencer). PdfBox trae BouncyCastle; se excluye `bcpkix`, que
+incluye un `X509TrustManager` que acepta cualquier certificado y Google Play rechaza. Solo lo
+usan los PDFs cifrados con certificado, que PdfBox rechaza de entrada: quedan en error con un
+mensaje claro ("tipo de protección que la app no puede abrir"). Los PDFs con contraseña de
+propietario (los que solo bloquean imprimir o copiar) se abren normalmente.
 
 ### 3.2 Limpieza (Kotlin puro, con pruebas)
 
@@ -82,6 +97,48 @@ la app y las tarjetas aparecen a medida que se procesan.
 - En cada tarjeta, tocar "p. 12" abre la **página original** renderizada, para tablas, fórmulas
   o gráficos que el texto no captura bien.
 
+### 3.4 Cómo quedó el armado (F1) y sus límites
+
+El código está en `dominio/` (Kotlin puro, ~240 pruebas). Pasó tres rondas de revisión
+adversarial con apuntes de texto corrido, libros (también hechos con LaTeX) y diapositivas
+exportadas a PDF, y una cuarta con los dos PDFs reales de la prueba en la S23. Además de lo de
+3.2 y 3.3, maneja:
+
+- Contadores de página en cualquier parte del encabezado o pie ("Página 5 de 8 · Economía I",
+  "Clase 3 | 5 / 20"), numeraciones impresas distintas de las del PDF (también dos en un mismo
+  cuadernillo) y encabezados alternados de páginas pares e impares, sin borrar etiquetas reales
+  como "Ejercicio 3" o "Unidad 2" ni números que son datos (una respuesta "80", celdas de tablas).
+- Notas al pie (con número volado, con `*`, o con número común si el texto las llama): quedan
+  después del párrafo, aunque el párrafo siga en la página siguiente.
+- Títulos de diapositiva repetidos en varias diapositivas seguidas (se dejan una vez por tanda),
+  también con encabezado de plantilla arriba, con viñetas largas o sin viñetas.
+- Títulos tipo "Unidad Nº 3", "Unidad Temática 2", "Módulo Introductorio", títulos numerados
+  largos pegados al texto, y abreviaturas argentinas (Bs. As., Cód. Civ., Cám. Nac., Expte.).
+
+**Rearmado.** Cada cambio en `dominio/` que cambie las tarjetas sube `ArmadorTarjetas.VERSION`.
+Al abrir la app, los PDFs ya listos con una versión anterior se rearman con el texto guardado de
+sus páginas (sin volver a leer el PDF ni pasar el OCR) y con el largo con que se armaron. Las
+tarjetas cuyo texto no cambió conservan su id y su progreso (lo sé, vistas, guardadas), y las
+secciones con el mismo título y página, su id. Mientras tanto Inicio muestra "Actualizando tus
+tarjetas…" y no lee el feed, para no mostrar tarjetas que están por reemplazarse. En la S23, el
+libro escaneado de 176 páginas se rearma en unos 6 s. Para F4: las tarjetas viejas se borran
+antes de insertar las nuevas, así que lo que cuelgue de ellas con borrado en cascada (preguntas)
+hay que pasarlo aparte.
+
+Limitaciones conocidas:
+
+- Los títulos en MAYÚSCULAS pasan a minúscula inicial y pierden mayúsculas de nombres propios
+  ("Facultad de ciencias económicas").
+- Un contador en medio de una línea sin palabra de página ni total ("Economía I 5 FCE") no se
+  reconoce como contador.
+- Un encabezado de unidad que empieza con la etiqueta ("Unidad 3 – Elasticidad") no se quita si
+  cada unidad dura menos de 3 páginas.
+- Encabezados de capítulo sin número de página: solo se detectan en 5 o más páginas alternadas.
+- Notas con número común que el texto no llama, o bloques de notas de número común de más de 6
+  renglones, pueden quedar mezclados con el texto.
+- Diapositivas muy cargadas (15 renglones o 700 caracteres) se tratan como páginas de texto.
+- Fuera de alcance: columnas múltiples, estructura de tablas, fórmulas y apuntes manuscritos.
+
 ---
 
 ## 4. Estilos de feed ("pieles")
@@ -94,20 +151,25 @@ ApunteScroll, para que nadie la confunda con la red real.
 ### Hilo (estilo X)
 
 - Cada publicación es **una tarjeta**. Avatar = color e iniciales o emoji de la materia;
-  nombre = materia; `@documento · p. 12`.
-- Si la sección tiene varias tarjetas, la publicación muestra `1/4`; al tocarla se abre el hilo
-  completo de la sección.
-- Acciones: 💬 crear pregunta · 🔁 repasar pronto · ♥ lo sé · 🔖 guardar.
+  nombre = materia; `@documento · p. 12`. Donde el feed entra en una sección, la publicación
+  lleva el título de la sección.
+- Si la sección tiene varias tarjetas, la publicación muestra un botón `3/12` (posición en la
+  sección completa); al tocarlo se abre el hilo completo de la sección en esa tarjeta.
+- Acciones: ♥ lo sé · 🔖 guardar (F2); 💬 crear pregunta y 🔁 repasar pronto llegan en F4.
 - Al interceptar **X**, se abre este estilo.
 
 ### Carrusel (estilo Instagram)
 
 - Cada publicación es **una sección**: hasta 10 tarjetas que se deslizan de costado, con puntitos
-  abajo. La primera diapositiva es el título de la sección sobre el color de la materia.
-- Arriba, una fila de **historias = materias**. Tocar una filtra el feed a esa materia. Un anillo
-  de color indica que tiene repasos pendientes.
-- Acciones: doble toque = "lo sé" en la diapositiva visible; ♥ = toda la publicación;
-  💬 crear pregunta; ↗ compartir el texto; 🔖 guardar.
+  abajo, sobre el color de la materia (4:5, sin pasar del 80 % del alto de la pantalla). La
+  primera diapositiva de una sección lleva el título arriba del texto. El texto se achica para
+  entrar; si ni así entra, se corta y aparece "Seguir leyendo", que abre el hilo en esa tarjeta.
+- Arriba, una fila de **historias = materias** (más "Todas" y "Guardadas"). Tocar una filtra el
+  feed. Un anillo de color indica que tiene tarjetas nuevas (desde F4, también repasos
+  pendientes).
+- Acciones: doble toque = "lo sé" en la diapositiva visible (con TalkBack, es una acción de la
+  diapositiva); ♥ = toda la publicación; 🔖 guardar. 💬 crear pregunta (F4) y ↗ compartir el
+  texto, más adelante.
 - Al interceptar **Instagram**, se abre este estilo.
 
 ### Vertical (estilo TikTok), más adelante
@@ -136,6 +198,23 @@ Una tarjeta por pantalla completa, letra grande, se pasa deslizando hacia arriba
 3. Cada ~5 publicaciones, una **pregunta** pendiente, si hay.
 4. Si no queda nada: publicación "Estás al día ✓" y la opción de seguir con repaso libre
    (tarjetas al azar).
+
+### Cómo funciona en F2 (hasta que llegue F4)
+
+- El feed es una **foto**: se arma al abrir, al cambiar de filtro o de piel y al actualizar
+  (deslizar hacia abajo o "Empezar de nuevo"), y no se reacomoda mientras se scrollea. "Lo sé" y
+  "guardar" se ven al instante y se guardan en la base.
+- Orden: primero las **nuevas**, en orden de lectura (documento en el orden en que se importó,
+  sección, tarjeta), alternando materias de a una sección; después las **vistas que no se
+  saben**, la vista hace más tiempo primero. Las sabidas no salen, salvo en Guardadas.
+- Una tarjeta cuenta como **vista** cuando está al menos al 60 % en pantalla durante 1,5 s, con
+  la app en primer plano; se cuenta una vez por sesión (también si se vio en el hilo).
+- "Lo sé" la pone en la caja 1 (próximo repaso en un día); deshacerlo la vuelve a la caja 0.
+- Si se terminan de procesar PDFs con el feed abierto aparece "Hay tarjetas nuevas"; si se borra
+  un PDF, el feed se recarga solo. Cada vez que se lee la base, la lista vuelve arriba (las
+  vistas pasaron al final, así que arriba está la próxima sin ver).
+- Lo que se marca en el hilo se ve en el feed. Al cambiar de pestaña, un hilo abierto en Inicio
+  se cierra: al volver se ve el feed donde estaba.
 
 ---
 
@@ -223,7 +302,7 @@ Bloqueador), ni saltarse controles de seguridad de Android.
 | UI | Jetpack Compose + Material 3, **edge-to-edge** (obligatorio con target 36) y "atrás predictivo". |
 | Base de datos | Room + KSP |
 | Trabajo en segundo plano | WorkManager (sin servicio en primer plano) |
-| Navegación | Se decide en F1: Navigation Compose 2.10 o Navigation 3 (1.2, estable). En F0 la barra de abajo cambia de sección sin librería. |
+| Navegación | Navigation Compose 2.10 con rutas con tipos (`@Serializable`). Cada sección de la barra de abajo es un grafo, así guarda su propia pila de pantallas. |
 | PDF → texto | PdfBox-Android |
 | OCR | ML Kit Text Recognition (vía Google Play services) |
 | Ajustes | SharedPreferences (como el Bloqueador) |
@@ -240,8 +319,9 @@ igual que el Bloqueador.
 ```
 com.apuntescroll
 ├── datos/         Room: entidades, DAOs, base; ajustes
-├── pdf/           extracción (PdfBox), OCR (PdfRenderer + ML Kit), worker de procesamiento
-├── dominio/       Kotlin puro y probado: limpieza, corte en tarjetas, repaso, armado del feed, preguntas
+├── pdf/           extracción (PdfBox), OCR (PdfRenderer + ML Kit), worker de procesamiento, rearmado
+├── dominio/       Kotlin puro y probado: limpieza y corte en tarjetas (después, repaso y preguntas)
+├── feed/          Kotlin puro y probado: orden del feed y publicaciones de Hilo y Carrusel
 ├── intercepcion/  servicio de accesibilidad, aviso y consentimiento, pantalla interceptada, pases
 └── ui/            MainActivity, navegación, biblioteca, feed (Hilo/Carrusel), perfil, ajustes
 ```
@@ -251,7 +331,8 @@ com.apuntescroll
 | Entidad | Campos principales |
 |---|---|
 | `Materia` | id, nombre, color, emoji, fechaParcial?, creada |
-| `Documento` | id, materiaId, título, archivo, páginas, estado (`PENDIENTE`/`PROCESANDO`/`LISTO`/`ERROR`), páginasProcesadas, creado |
+| `Documento` | id, materiaId, título, archivo, páginas, estado (`PENDIENTE`/`EXTRAYENDO`/`ARMANDO`/`LISTO`/`ERROR`), páginasProcesadas, páginasOcr, error, creado, versiónArmado, largoArmado (para rearmar, 3.4) |
+| `PaginaTexto` | documentoId + número, texto crudo, origen (`TEXTO`/`OCR`). Permite retomar el procesamiento y rearmar las tarjetas. |
 | `Seccion` | id, documentoId, orden, título, páginaInicio |
 | `Tarjeta` | id, documentoId, seccionId, orden, texto, página, origen (`TEXTO`/`OCR`), caja, próximoRepaso?, vecesVista, últimaVista?, guardada, editada |
 | `Pregunta` | id, tarjetaId, pregunta, respuesta, tipo (`MANUAL`/`DEFINICION`/`COMPLETAR`), caja, próximoRepaso? |
@@ -260,11 +341,16 @@ com.apuntescroll
 Los PDFs se copian a la carpeta privada de la app, así siguen disponibles aunque se borre el
 original.
 
+La base va por la versión 2 (la 1 → 2 agrega `versiónArmado` y `largoArmado`, con migración
+automática de Room). Los esquemas quedan en `app/schemas`; antes de publicar se saca el borrado
+de la base como red de seguridad y cada cambio lleva su migración.
+
 ### Pruebas
 
-- Pruebas locales (JUnit) de todo `dominio/`: limpieza, corte, repaso, feed y detector de
-  preguntas, con textos de ejemplo de apuntes reales.
-- Extracción y OCR: pruebas a mano en la S23 con un PDF digital y uno escaneado.
+- Pruebas locales (JUnit) de `dominio/` y `feed/` (limpieza, corte, orden del feed y
+  publicaciones; después repaso y detector de preguntas), con textos de ejemplo de apuntes
+  reales, y del traspaso de progreso al rearmar.
+- Extracción, OCR y pantallas: pruebas a mano en la S23 con un PDF digital y uno escaneado.
 
 ---
 
@@ -284,7 +370,7 @@ original.
 | **Páginas de memoria de 16 KB** | Las apps con target 35 o más tienen que soportarlas en dispositivos de 64 bits. PdfBox es Java puro; para ML Kit se usa la variante de Play services. Se comprueba en el *App Bundle Explorer* de Play Console ("Supports 16 KB"). |
 | **Accesibilidad** (no es una herramienta de accesibilidad) | No se puede marcar `isAccessibilityTool`. Hace falta: (1) **declaración en Play Console** con el motivo ("funcionalidad de la app"), si se recopilan datos con la API y un **video**; (2) mencionar el uso de accesibilidad en la **ficha** de Play; (3) el **aviso y consentimiento** dentro de la app (sección 7); (4) explicar por qué no alcanza una API más acotada (ver 10.3). Si cambia el uso, se vuelve a declarar. |
 | **Política de privacidad** | URL pública. Se publica desde este repo con GitHub Pages (`docs/privacidad.md`). |
-| **Seguridad de los datos** | Formulario en Play Console. ApunteScroll no envía datos fuera del teléfono; falta revisar qué declara ML Kit (puede enviar métricas de uso a Google). |
+| **Seguridad de los datos** | Formulario en Play Console. Los apuntes no salen del teléfono, pero **ML Kit (variante de Play services) envía a Google** información del dispositivo y de la app, métricas de rendimiento y códigos de error, con identificadores del dispositivo y de la instalación, para diagnóstico y analítica ([divulgación de ML Kit](https://developers.google.com/ml-kit/android-data-disclosure)). Respuestas: recopila datos **sí** (por el SDK); tipos "ID del dispositivo u otros" y "Información y rendimiento de la app > Diagnóstico"; se comparten **no**; finalidad analítica; cifrados en tránsito; no opcionales. Revisar la página de ML Kit al completar el formulario, porque cambia con cada versión. La política de privacidad tiene que decir lo mismo. |
 | **Contenido de la app** | Cuestionario de clasificación por edad, público objetivo **mayores de 18** (universitarios; evita la política de Familias), sin anuncios. |
 | **Marcas y suplantación** | Nombre e ícono propios. Sin logos, colores ni capturas de Instagram o X. En la ficha, las redes se nombran solo de forma descriptiva ("cuando abres tus redes sociales…"), nunca como si fuera una app oficial. |
 | **Ficha de la tienda** | Ícono de 512×512, gráfico destacado de 1024×500, al menos 2 capturas de teléfono, descripción corta (80 caracteres) y completa (4000). |
@@ -381,11 +467,11 @@ Cada fase termina con una versión que se puede instalar y probar en la S23.
 
 | Fase | Qué incluye | Lista cuando… |
 |---|---|---|
-| **F0. Base** ✅ | Proyecto Android con target 36, edge-to-edge, tema, barra de navegación con secciones vacías, Ajustes con el largo de tarjeta, README con cómo compilar. | La versión debug abre en la S23 (falta probarlo). |
-| **F1. PDF → tarjetas** | Materias, importar PDFs, worker con texto + OCR, limpieza y corte, biblioteca con progreso, lista de tarjetas por documento, ver la página original. | Un PDF digital y uno escaneado tuyos quedan en tarjetas legibles. |
-| **F2. Feed** | Pieles Hilo y Carrusel, "lo sé", guardar, marcar vistas, historias/filtro por materia. | Scrolleas tus apuntes en los dos estilos. |
+| **F0. Base** ✅ | Proyecto Android con target 36, edge-to-edge, tema, barra de navegación con secciones vacías, Ajustes con el largo de tarjeta, README con cómo compilar. | La versión debug abre en la S23 ✓. |
+| **F1. PDF → tarjetas** ✅ | Materias, importar PDFs, worker con texto + OCR, limpieza y corte, biblioteca con progreso, lista de tarjetas por documento, ver la página original. | Un PDF digital y uno escaneado tuyos quedan en tarjetas legibles ✓ (65 páginas → 423 tarjetas; libro escaneado de 176 páginas → 3102 tarjetas, OCR en unos 2 min). |
+| **F2. Feed** ✅ | Pieles Hilo y Carrusel, "lo sé", guardar, marcar vistas, historias/filtro por materia, hilo completo de una sección, rearmado cuando cambia el armado. | Scrolleas tus apuntes en los dos estilos ✓. |
 | **F3. Intercepción** | Servicio de accesibilidad, aviso y consentimiento, pantalla interceptada, modos y pases. | Abrir Instagram muestra el Carrusel y abrir X muestra el Hilo. |
-| **P1. Publicación (prueba)** | Clave de subida, política de privacidad, ficha, formularios de Play Console, declaración y video, prueba cerrada. | La prueba cerrada está abierta con 12+ testers. |
+| **P1. Publicación (prueba)** | Clave de subida, activar R8 en la versión release (y probarla con un PDF digital y uno escaneado), pantalla de licencias de código abierto, política de privacidad, ficha, formularios de Play Console, declaración y video, prueba cerrada. | La prueba cerrada está abierta con 12+ testers. |
 | **F4. Repaso y preguntas** | Leitner, mezcla del feed, preguntas manuales y automáticas, "Estás al día". | Las tarjetas que marcas vuelven en las fechas correctas. |
 | **F5. Racha y estadísticas** | Registro diario, metas, perfil, gráfico. | La racha y el progreso por materia se ven bien después de unos días de uso. |
 | **F6. Pulido** | Editar tarjetas (corregir OCR), copia de seguridad (exportar e importar un .zip), modo oscuro, ícono final. | — |
@@ -423,7 +509,7 @@ corre la prueba cerrada.
 | Google Play **rechaza la declaración de accesibilidad**. | Aviso y video bien hechos, alcance mínimo (solo el paquete); plan B con `UsageStatsManager` (10.3). |
 | La prueba cerrada no llega a 12 testers o Google la considera con **poco uso**. | Reclutar de más (15–20) y pedirles que usen la app de verdad durante los 14 días. |
 | PDFs con columnas, tablas o fórmulas: el texto sale desordenado o con símbolos sueltos. | Botón para ver la página original; editar tarjetas (F6). |
-| OCR lento en documentos largos (~0,5–1,5 s por página). | Worker en segundo plano por tandas; las tarjetas aparecen a medida que se procesan. |
+| OCR lento en documentos largos (~0,5–1,5 s por página). | Worker en segundo plano por tandas, con el avance a la vista ("Leyendo páginas: 12 de 40"). |
 | Instagram o X cambian de paquete o de comportamiento. | Lista de paquetes configurable. |
 | Android sigue restringiendo la accesibilidad (por ejemplo, la Protección avanzada de Android 17). | Detectar el servicio apagado y explicarlo; el feed dentro de la app sigue funcionando. |
 
@@ -431,7 +517,10 @@ corre la prueba cerrada.
 
 ## 14. Pendientes
 
-- Probar la versión debug de F0 en la S23.
+- Probar el feed con letra grande y con TalkBack ("Seguir leyendo", acciones de las
+  diapositivas y de las historias).
+- Rearmar las tarjetas al cambiar el largo en Ajustes (hoy vale solo para los PDFs nuevos); el
+  progreso de las tarjetas se perdería casi todo, así que pediría confirmación.
 - Reclutar testers (10.6).
 
 ---
