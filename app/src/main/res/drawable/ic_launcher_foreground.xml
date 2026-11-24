@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    108x108 dp; lo visible es el círculo central de 66 dp (de 21 a 87).
+    Atrás, una tarjeta asomando; adelante, una tarjeta con tres renglones de texto.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Tarjeta de atrás -->
+    <path
+        android:fillAlpha="0.45"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M42,30h26a4,4 0,0 1,4 4v6h-34v-6a4,4 0,0 1,4 -4z" />
+
+    <!-- Tarjeta de adelante -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,38h34a5,5 0,0 1,5 5v26a5,5 0,0 1,-5 5h-34a5,5 0,0 1,-5 -5v-26a5,5 0,0 1,5 -5z" />
+
+    <!-- Renglones -->
+    <path
+        android:fillColor="#FF4338CA"
+        android:pathData="M39,46h30a2,2 0,0 1,0 4h-30a2,2 0,0 1,0 -4z" />
+    <path
+        android:fillColor="#FF4338CA"
+        android:pathData="M39,54h30a2,2 0,0 1,0 4h-30a2,2 0,0 1,0 -4z" />
+    <path
+        android:fillColor="#FF4338CA"
+        android:pathData="M39,62h18a2,2 0,0 1,0 4h-18a2,2 0,0 1,0 -4z" />
+</vector>

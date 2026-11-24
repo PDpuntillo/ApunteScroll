@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mismos valores que ui/tema/Colores.kt, para el arranque y el ícono. -->
+    <color name="fondo">#FFFBFBFF</color>
+    <color name="icono_fondo">#FF4338CA</color>
+</resources>

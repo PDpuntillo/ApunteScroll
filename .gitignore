@@ -1,0 +1,25 @@
+# Gradle y compilación
+.gradle/
+build/
+app/build/
+.kotlin/
+
+# Configuración local (ruta del SDK)
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Firma: la clave de subida y sus contraseñas nunca van al repositorio.
+*.jks
+*.keystore
+keystore.properties
+
+# Paquetes compilados (se suben a Google Play, no al repositorio)
+*.apk
+*.aab
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

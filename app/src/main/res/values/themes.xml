@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Tema de la ventana mientras arranca la app (antes de que corra MainActivity). El resto lo
+        dibuja Compose (ui/tema/Tema.kt). Las barras transparentes y los íconos oscuros evitan que
+        la barra de estado se vea gris un instante en modo claro. Android fuerza el borde a borde
+        solo desde Android 15; en 8 a 14 lo hace enableEdgeToEdge() en MainActivity.
+    -->
+    <style name="Theme.ApunteScroll" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fondo</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
