@@ -2,6 +2,7 @@ package com.apuntescroll.datos
 
 import android.content.Context
 import androidx.core.content.edit
+import com.apuntescroll.feed.PielFeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,8 +34,21 @@ class Ajustes(context: Context) {
         _largoTarjeta.value = largo
     }
 
+    private val _piel = MutableStateFlow(
+        PielFeed.entries.firstOrNull { it.name == prefs.getString(CLAVE_PIEL, null) } ?: PielFeed.HILO,
+    )
+
+    /** Estilo del feed dentro de la app (al interceptar una red, F3 usa el de esa red). */
+    val piel: StateFlow<PielFeed> = _piel.asStateFlow()
+
+    fun cambiarPiel(piel: PielFeed) {
+        prefs.edit { putString(CLAVE_PIEL, piel.name) }
+        _piel.value = piel
+    }
+
     private companion object {
         const val ARCHIVO = "ajustes"
         const val CLAVE_LARGO = "largo_tarjeta"
+        const val CLAVE_PIEL = "piel_feed"
     }
 }

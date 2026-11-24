@@ -1,0 +1,416 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "03bb927cd770b1cabfcba06ec0ea5a7e",
+    "entities": [
+      {
+        "tableName": "materias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `color` TEXT NOT NULL, `emoji` TEXT NOT NULL, `fechaParcial` INTEGER, `creada` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "color",
+            "columnName": "color",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "emoji",
+            "columnName": "emoji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaParcial",
+            "columnName": "fechaParcial",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "creada",
+            "columnName": "creada",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "documentos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `materiaId` INTEGER NOT NULL, `titulo` TEXT NOT NULL, `archivo` TEXT NOT NULL, `paginas` INTEGER NOT NULL, `estado` TEXT NOT NULL, `paginasProcesadas` INTEGER NOT NULL, `paginasOcr` INTEGER NOT NULL, `error` TEXT, `creado` INTEGER NOT NULL, `versionArmado` INTEGER NOT NULL DEFAULT 0, `largoArmado` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`materiaId`) REFERENCES `materias`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "materiaId",
+            "columnName": "materiaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titulo",
+            "columnName": "titulo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivo",
+            "columnName": "archivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paginas",
+            "columnName": "paginas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paginasProcesadas",
+            "columnName": "paginasProcesadas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paginasOcr",
+            "columnName": "paginasOcr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "creado",
+            "columnName": "creado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versionArmado",
+            "columnName": "versionArmado",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "largoArmado",
+            "columnName": "largoArmado",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_documentos_materiaId",
+            "unique": false,
+            "columnNames": [
+              "materiaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_documentos_materiaId` ON `${TABLE_NAME}` (`materiaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "materias",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "materiaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "paginas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`documentoId` INTEGER NOT NULL, `numero` INTEGER NOT NULL, `texto` TEXT NOT NULL, `origen` TEXT NOT NULL, PRIMARY KEY(`documentoId`, `numero`), FOREIGN KEY(`documentoId`) REFERENCES `documentos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "documentoId",
+            "columnName": "documentoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numero",
+            "columnName": "numero",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "texto",
+            "columnName": "texto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origen",
+            "columnName": "origen",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "documentoId",
+            "numero"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "documentos",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "documentoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "secciones",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `documentoId` INTEGER NOT NULL, `orden` INTEGER NOT NULL, `titulo` TEXT, `paginaInicio` INTEGER NOT NULL, FOREIGN KEY(`documentoId`) REFERENCES `documentos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "documentoId",
+            "columnName": "documentoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titulo",
+            "columnName": "titulo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paginaInicio",
+            "columnName": "paginaInicio",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_secciones_documentoId",
+            "unique": false,
+            "columnNames": [
+              "documentoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_secciones_documentoId` ON `${TABLE_NAME}` (`documentoId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "documentos",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "documentoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "tarjetas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `documentoId` INTEGER NOT NULL, `seccionId` INTEGER NOT NULL, `orden` INTEGER NOT NULL, `texto` TEXT NOT NULL, `pagina` INTEGER NOT NULL, `origen` TEXT NOT NULL, `caja` INTEGER NOT NULL, `proximoRepaso` INTEGER, `vecesVista` INTEGER NOT NULL, `ultimaVista` INTEGER, `guardada` INTEGER NOT NULL, `editada` INTEGER NOT NULL, FOREIGN KEY(`documentoId`) REFERENCES `documentos`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`seccionId`) REFERENCES `secciones`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "documentoId",
+            "columnName": "documentoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seccionId",
+            "columnName": "seccionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "texto",
+            "columnName": "texto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pagina",
+            "columnName": "pagina",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origen",
+            "columnName": "origen",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "caja",
+            "columnName": "caja",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proximoRepaso",
+            "columnName": "proximoRepaso",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "vecesVista",
+            "columnName": "vecesVista",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultimaVista",
+            "columnName": "ultimaVista",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "guardada",
+            "columnName": "guardada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "editada",
+            "columnName": "editada",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tarjetas_documentoId",
+            "unique": false,
+            "columnNames": [
+              "documentoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tarjetas_documentoId` ON `${TABLE_NAME}` (`documentoId`)"
+          },
+          {
+            "name": "index_tarjetas_seccionId",
+            "unique": false,
+            "columnNames": [
+              "seccionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tarjetas_seccionId` ON `${TABLE_NAME}` (`seccionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "documentos",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "documentoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "secciones",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "seccionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '03bb927cd770b1cabfcba06ec0ea5a7e')"
+    ]
+  }
+}

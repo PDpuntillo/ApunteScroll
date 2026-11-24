@@ -3,8 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        F0: la app todavía no pide ningún permiso. Los que vengan después (accesibilidad en F3)
-        llevan su aviso y consentimiento propios, como exige Google Play.
+        La app no pide permisos en tiempo de ejecución: los PDFs se eligen con el selector de
+        archivos del sistema y se copian a la carpeta privada. Las librerías agregan permisos
+        normales: INTERNET (envío de diagnósticos de ML Kit), ACCESS_NETWORK_STATE (WorkManager y
+        ML Kit), y WAKE_LOCK, RECEIVE_BOOT_COMPLETED y FOREGROUND_SERVICE (WorkManager; la app no
+        usa servicios en primer plano). La accesibilidad de F3 lleva su aviso y consentimiento
+        propios.
     -->
 
     <application
@@ -19,6 +23,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ApunteScroll"
         tools:targetApi="33">
+
+        <!-- Pide a Google Play que descargue el modelo de OCR al instalar la app. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
 
         <activity
             android:name=".ui.MainActivity"

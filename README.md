@@ -6,10 +6,14 @@ Instagram y X. Cuando abres una de esas redes, ApunteScroll la tapa y te muestra
 - Extrae el texto de los PDFs; las páginas escaneadas pasan por OCR en el teléfono.
 - Corta el texto en tarjetas cortas, organizadas por materia y sección.
 - "Me gusta" = "ya lo sé": repaso espaciado, preguntas en el feed, racha y estadísticas.
-- Todo queda en el teléfono: sin cuentas ni servidor.
+- Tus apuntes quedan en el teléfono: sin cuentas ni servidor propio. (El OCR de Google, ML Kit,
+  envía diagnósticos a Google; ver PLAN.md, sección 10.)
 
-Estado: **F0 (base del proyecto)**. La app abre con su barra de navegación y la pantalla de
-Ajustes; el resto llega en las fases siguientes. Ver [PLAN.md](PLAN.md).
+Estado: **F2 (feed)**, probado en una Galaxy S23. Se crean materias, se importan PDFs, se
+procesan en segundo plano (texto + OCR) y sus tarjetas se scrollean en Inicio en dos estilos:
+Hilo (una tarjeta por publicación) y Carrusel (una sección por publicación, con historias por
+materia), con "lo sé", guardar y el hilo completo de cada sección. La intercepción de Instagram
+y X llega en F3. Ver [PLAN.md](PLAN.md).
 
 ---
 
@@ -64,6 +68,11 @@ conectado por USB (con la depuración USB activada):
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
+Instalada así (no desde Google Play), el modelo de OCR se descarga la primera vez que se procesa
+una página escaneada: esa vez el teléfono necesita internet. Mientras tanto el PDF queda "Leyendo
+páginas" y el worker reintenta solo durante unos 18 minutos; si el modelo no llegó, el PDF queda
+en error y **Reintentar** (en el menú del PDF) sigue desde la página donde había quedado.
+
 ### Versiones
 
 | Pieza | Versión |
@@ -82,9 +91,17 @@ conectado por USB (con la depuración USB activada):
 ```
 app/src/main/java/com/apuntescroll/
 ├── ApunteScrollApp.kt   Application y contenedor de dependencias
-├── datos/               ajustes (y desde F1, la base de datos Room)
-└── ui/                  MainActivity, navegación, pantallas y tema
-app/src/test/            pruebas locales (JUnit)
+├── datos/               ajustes, repositorio y base de datos Room (bd/)
+├── pdf/                 copia de PDFs, texto (PdfBox), OCR (ML Kit), worker de procesamiento, rearmado
+├── dominio/             limpieza del texto y corte en tarjetas (Kotlin puro, con pruebas)
+├── feed/                orden del feed y publicaciones de Hilo y Carrusel (Kotlin puro, con pruebas)
+└── ui/                  MainActivity, navegación, biblioteca, feed, pantallas y tema
+app/src/test/            pruebas locales (JUnit) de dominio/, feed/ y del rearmado
+app/schemas/             esquemas de la base (Room), para las migraciones
 ```
 
-Más adelante se suman `pdf/`, `dominio/` e `intercepcion/` (PLAN.md, sección 9).
+Si se cambia el armado de tarjetas (`dominio/`), hay que subir `ArmadorTarjetas.VERSION`: al
+abrir la app, los PDFs ya procesados se rearman con el texto guardado y conservan el progreso de
+las tarjetas que no cambiaron (PLAN.md, sección 3.4).
+
+En F3 se suma `intercepcion/` (PLAN.md, sección 9).

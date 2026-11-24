@@ -15,10 +15,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        val contenedor = (application as ApunteScrollApp).contenedor
+        val app = application as ApunteScrollApp
         setContent {
             ApunteScrollTema {
-                AppRaiz(ajustes = contenedor.ajustes)
+                AppRaiz(app)
             }
         }
     }

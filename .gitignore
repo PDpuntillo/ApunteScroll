@@ -11,6 +11,10 @@ local.properties
 .idea/
 *.iml
 
+# Claude Code: worktrees temporales y ajustes locales
+.claude/worktrees/
+.claude/settings.local.json
+
 # Firma: la clave de subida y sus contraseñas nunca van al repositorio.
 *.jks
 *.keystore

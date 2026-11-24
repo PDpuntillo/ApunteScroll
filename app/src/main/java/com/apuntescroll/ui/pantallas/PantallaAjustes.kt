@@ -24,45 +24,49 @@ import com.apuntescroll.BuildConfig
 import com.apuntescroll.R
 import com.apuntescroll.datos.Ajustes
 import com.apuntescroll.datos.LargoTarjeta
+import com.apuntescroll.ui.componentes.PantallaBase
 
 @Composable
 fun PantallaAjustes(ajustes: Ajustes, modifier: Modifier = Modifier) {
     val largo by ajustes.largoTarjeta.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 16.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.ajustes_titulo),
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-
-        Text(
-            text = stringResource(R.string.ajustes_largo_tarjeta),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Column(Modifier.selectableGroup()) {
-            LargoTarjeta.entries.forEach { opcion ->
-                FilaOpcion(
-                    texto = stringResource(etiqueta(opcion)),
-                    elegida = opcion == largo,
-                    alElegir = { ajustes.cambiarLargoTarjeta(opcion) },
-                )
+    PantallaBase(titulo = stringResource(R.string.ajustes_titulo), modifier = modifier) { margenes ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(margenes)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ajustes_largo_tarjeta),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = stringResource(R.string.ajustes_largo_explicacion),
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(Modifier.selectableGroup()) {
+                LargoTarjeta.entries.forEach { opcion ->
+                    FilaOpcion(
+                        texto = stringResource(etiqueta(opcion)),
+                        elegida = opcion == largo,
+                        alElegir = { ajustes.cambiarLargoTarjeta(opcion) },
+                    )
+                }
             }
-        }
 
-        Text(
-            text = stringResource(R.string.ajustes_version, BuildConfig.VERSION_NAME),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+            Text(
+                text = stringResource(R.string.ajustes_version, BuildConfig.VERSION_NAME),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
