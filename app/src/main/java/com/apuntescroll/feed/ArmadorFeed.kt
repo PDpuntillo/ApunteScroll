@@ -13,6 +13,14 @@ package com.apuntescroll.feed
  */
 object ArmadorFeed {
 
+    /**
+     * Tarjetas que quedan por estudiar para la meta del pase (F3): las no sabidas, sin contar las
+     * de [excluir] (las que ya están en el progreso). Las que se marcaron "lo sé" en esta sesión
+     * ([marcadasEnSesion]) siguen contando: si no, marcar sin leer bajaría la meta.
+     */
+    fun disponibles(tarjetas: List<TarjetaFeed>, marcadasEnSesion: Set<Long>, excluir: Set<Long>): Int =
+        tarjetas.count { (!it.sabida || it.id in marcadasEnSesion) && it.id !in excluir }
+
     /** Máximo de diapositivas por publicación del Carrusel (como Instagram). */
     const val MAX_DIAPOSITIVAS = 10
 

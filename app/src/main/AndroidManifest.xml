@@ -7,9 +7,22 @@
         archivos del sistema y se copian a la carpeta privada. Las librerías agregan permisos
         normales: INTERNET (envío de diagnósticos de ML Kit), ACCESS_NETWORK_STATE (WorkManager y
         ML Kit), y WAKE_LOCK, RECEIVE_BOOT_COMPLETED y FOREGROUND_SERVICE (WorkManager; la app no
-        usa servicios en primer plano). La accesibilidad de F3 lleva su aviso y consentimiento
-        propios.
+        usa servicios en primer plano).
+
+        La intercepción (F3) usa un servicio de accesibilidad con su aviso y consentimiento propios,
+        y el permiso normal QUERY_ADVANCED_PROTECTION_MODE para explicar si la Protección avanzada
+        de Android 17 lo apagó. La app no usa QUERY_ALL_PACKAGES ni SYSTEM_ALERT_WINDOW
+        (PoliticaIntercepcionTest).
     -->
+    <uses-permission android:name="android.permission.QUERY_ADVANCED_PROTECTION_MODE" />
+
+    <queries>
+        <!-- Solo para mostrar en Ajustes si están instaladas. No hace falta para recibir sus
+             eventos ni para volver a ellas. Sin QUERY_ALL_PACKAGES. Tiene que coincidir con
+             Redes.CONOCIDAS (PoliticaIntercepcionTest). -->
+        <package android:name="com.instagram.android" />
+        <package android:name="com.twitter.android" />
+    </queries>
 
     <application
         android:name=".ApunteScrollApp"
@@ -39,5 +52,38 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Botón «Ajustes» de la página del servicio en Accesibilidad de Android: abre Ajustes > Redes. -->
+        <activity-alias
+            android:name=".ui.AbrirAjustesRedes"
+            android:exported="true"
+            android:targetActivity=".ui.MainActivity" />
+
+        <!-- Feed de apuntes encima de una red. Tarea propia (si no, NEW_TASK la metería en la de la
+             app y "atrás" volvería a la Biblioteca); fuera de Recientes; noHistory: se cierra apenas
+             dejás de verla. Sin showWhenLocked: no aparece sobre la pantalla de bloqueo. -->
+        <activity
+            android:name=".intercepcion.FeedInterceptadoActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity="com.apuntescroll.interceptado" />
+
+        <!-- Detecta qué app pasa a primer plano. El nombre de la clase NO se cambia después de
+             publicar: Android guarda el servicio activado por su nombre y renombrarlo lo apagaría
+             en todos los teléfonos (PoliticaIntercepcionTest). -->
+        <service
+            android:name=".intercepcion.ServicioIntercepcion"
+            android:exported="true"
+            android:label="@string/servicio_nombre"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/servicio_intercepcion" />
+        </service>
     </application>
 </manifest>

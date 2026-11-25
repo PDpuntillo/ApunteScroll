@@ -87,17 +87,18 @@ fun sinMargenArriba(margenes: PaddingValues): PaddingValues {
 }
 
 /**
- * Llama a [alVer] cuando [activo] lleva [MS_PARA_VISTA] seguido en true y la app está en primer
- * plano (con la pantalla apagada o la app en segundo plano no cuenta).
+ * Llama a [alVer] cuando [activo] lleva [ms] seguido en true y la app está en primer plano (con la
+ * pantalla apagada o la app en segundo plano no cuenta). Sirve para contar una tarjeta como vista
+ * ([MS_PARA_VISTA]) y como leída para el pase (Lectura.msLectura, F3).
  */
 @Composable
-fun RegistrarVista(clave: Any, activo: Boolean, alVer: () -> Unit) {
+fun RegistrarVista(clave: Any, activo: Boolean, ms: Long = MS_PARA_VISTA, alVer: () -> Unit) {
     val estadoCiclo by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val alVerActual by rememberUpdatedState(alVer)
     val enPantalla = activo && estadoCiclo.isAtLeast(Lifecycle.State.RESUMED)
     LaunchedEffect(clave, enPantalla) {
         if (enPantalla) {
-            delay(MS_PARA_VISTA)
+            delay(ms)
             alVerActual()
         }
     }

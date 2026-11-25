@@ -38,7 +38,7 @@ class Ajustes(context: Context) {
         PielFeed.entries.firstOrNull { it.name == prefs.getString(CLAVE_PIEL, null) } ?: PielFeed.HILO,
     )
 
-    /** Estilo del feed dentro de la app (al interceptar una red, F3 usa el de esa red). */
+    /** Estilo del feed de Inicio. La pantalla interceptada usa el de la red (RedConocida.piel). */
     val piel: StateFlow<PielFeed> = _piel.asStateFlow()
 
     fun cambiarPiel(piel: PielFeed) {

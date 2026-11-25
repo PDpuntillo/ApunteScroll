@@ -1,5 +1,7 @@
 package com.apuntescroll.ui
 
+import android.content.Context
+import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,16 +13,16 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -33,6 +35,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.apuntescroll.ApunteScrollApp
 import com.apuntescroll.R
+import com.apuntescroll.intercepcion.abrirAccesibilidad
+import com.apuntescroll.intercepcion.abrirUrl
+import com.apuntescroll.intercepcion.reglas.EstadoServicio
+import com.apuntescroll.intercepcion.ui.AccesoIntercepcion
+import com.apuntescroll.intercepcion.ui.AvisoIntercepcion
+import com.apuntescroll.intercepcion.ui.PantallaAviso
+import com.apuntescroll.intercepcion.ui.SeccionRedes
 import com.apuntescroll.ui.biblioteca.BibliotecaViewModel
 import com.apuntescroll.ui.biblioteca.DocumentoViewModel
 import com.apuntescroll.ui.biblioteca.MateriaViewModel
@@ -43,20 +52,24 @@ import com.apuntescroll.ui.biblioteca.PantallaMateria
 import com.apuntescroll.ui.biblioteca.PantallaPagina
 import com.apuntescroll.ui.feed.FeedViewModel
 import com.apuntescroll.ui.feed.HiloViewModel
+import com.apuntescroll.ui.feed.OpcionesFeed
 import com.apuntescroll.ui.feed.PantallaFeed
 import com.apuntescroll.ui.feed.PantallaHilo
 import com.apuntescroll.ui.navegacion.GrafoBiblioteca
 import com.apuntescroll.ui.navegacion.GrafoInicio
 import com.apuntescroll.ui.navegacion.RutaHilo
 import com.apuntescroll.ui.navegacion.RutaAjustes
+import com.apuntescroll.ui.navegacion.RutaAvisoIntercepcion
 import com.apuntescroll.ui.navegacion.RutaBiblioteca
 import com.apuntescroll.ui.navegacion.RutaDocumento
 import com.apuntescroll.ui.navegacion.RutaInicio
 import com.apuntescroll.ui.navegacion.RutaMateria
 import com.apuntescroll.ui.navegacion.RutaPagina
 import com.apuntescroll.ui.navegacion.RutaPerfil
+import com.apuntescroll.ui.navegacion.siEstaActiva
 import com.apuntescroll.ui.pantallas.PantallaAjustes
 import com.apuntescroll.ui.pantallas.PantallaPerfil
+import kotlinx.coroutines.flow.StateFlow
 
 /** Las cuatro secciones de la barra de abajo, con la ruta (o grafo) de cada una. */
 enum class Seccion(@StringRes val etiqueta: Int, @DrawableRes val icono: Int, val ruta: Any) {
@@ -66,19 +79,50 @@ enum class Seccion(@StringRes val etiqueta: Int, @DrawableRes val icono: Int, va
     AJUSTES(R.string.nav_ajustes, R.drawable.ic_ajustes, RutaAjustes),
 }
 
-/** Pantalla raíz: barra de navegación abajo y el NavHost con todas las pantallas arriba. */
+/**
+ * Pantalla raíz: barra de navegación abajo y el NavHost con todas las pantallas arriba.
+ * [destinoPedido]: a dónde ir al abrir la app desde afuera (MainActivity); cuando se atiende,
+ * se llama a [alAtender].
+ */
 @Composable
-fun AppRaiz(app: ApunteScrollApp) {
+fun AppRaiz(app: ApunteScrollApp, destinoPedido: StateFlow<Destino?>, alAtender: () -> Unit) {
     val contenedor = app.contenedor
+    val context = LocalContext.current
     val nav = rememberNavController()
     val entrada by nav.currentBackStackEntryAsState()
     val destino = entrada?.destination
+    val abrirAviso = { nav.navigate(RutaAvisoIntercepcion) { launchSingleTop = true } }
+
+    // El NavHost está dentro del Scaffold y arma su grafo recién al medirse: hasta que haya una
+    // entrada en la pila, navegar fallaría.
+    val pedido by destinoPedido.collectAsStateWithLifecycle()
+    LaunchedEffect(pedido, entrada != null) {
+        val d = pedido ?: return@LaunchedEffect
+        if (entrada == null) return@LaunchedEffect
+        when (d) {
+            Destino.AJUSTES_REDES -> irASeccion(nav, Seccion.AJUSTES, yaElegida = false)
+            Destino.BIBLIOTECA -> irASeccion(nav, Seccion.BIBLIOTECA, yaElegida = false)
+            Destino.AVISO -> abrirAviso()
+        }
+        alAtender()
+    }
+    // Si el servicio está activado en Android sin que se haya aceptado el aviso, el aviso se abre
+    // solo, una vez por proceso.
+    val estadoServicio by contenedor.detector.estado.collectAsStateWithLifecycle()
+    LaunchedEffect(estadoServicio, entrada != null) {
+        if (entrada == null) return@LaunchedEffect
+        if (estadoServicio == EstadoServicio.ACTIVADO_SIN_AVISO && !contenedor.intercepcion.avisoAutomaticoMostrado) {
+            contenedor.intercepcion.avisoAutomaticoMostrado = true
+            abrirAviso()
+        }
+    }
+    val enAviso = destino?.hasRoute(RutaAvisoIntercepcion::class) == true
 
     Scaffold(
         // Cada pantalla tiene su propia barra de arriba, que maneja la barra de estado.
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            NavigationBar {
+            if (!enAviso) NavigationBar {
                 Seccion.entries.forEach { s ->
                     val elegida = destino?.hierarchy?.any { it.hasRoute(s.ruta::class) } == true
                     NavigationBarItem(
@@ -104,6 +148,8 @@ fun AppRaiz(app: ApunteScrollApp) {
                         viewModel = viewModel { feedViewModel(app) },
                         alAbrirHilo = { seccionId, tarjetaId -> e.siEstaActiva { nav.navigate(RutaHilo(seccionId, tarjetaId)) } },
                         alIrABiblioteca = { irASeccion(nav, Seccion.BIBLIOTECA, yaElegida = false) },
+                        cabecera = { AvisoIntercepcion(contenedor, alAbrirAviso = { e.siEstaActiva { abrirAviso() } }) },
+                        pie = { AccesoIntercepcion(contenedor, alAbrirAviso = { e.siEstaActiva { abrirAviso() } }) },
                     )
                 }
                 composable<RutaHilo> { e ->
@@ -156,21 +202,83 @@ fun AppRaiz(app: ApunteScrollApp) {
             }
 
             composable<RutaPerfil> { PantallaPerfil() }
-            composable<RutaAjustes> { PantallaAjustes(ajustes = contenedor.ajustes) }
+            composable<RutaAjustes> { e ->
+                PantallaAjustes(
+                    ajustes = contenedor.ajustes,
+                    seccionRedes = { avisos ->
+                        SeccionRedes(contenedor, avisos, alAbrirAviso = { e.siEstaActiva { abrirAviso() } })
+                    },
+                )
+            }
+
+            // El aviso de la intercepción (F3): pantalla propia, sin la barra de abajo.
+            composable<RutaAvisoIntercepcion> {
+                val consentimiento by contenedor.ajustesIntercepcion.consentimiento.collectAsStateWithLifecycle()
+                val urlPrivacidad = stringResource(R.string.url_privacidad)
+                val cerrar = dropUnlessResumed { nav.popBackStack() }
+                PantallaAviso(
+                    yaActivado = estadoServicio == EstadoServicio.ACTIVADO_SIN_AVISO || contenedor.detector.habilitado(),
+                    yaAceptado = consentimiento?.vigente() == true,
+                    versionVieja = consentimiento?.vigente() == false,
+                    conPrivacidad = urlPrivacidad.isNotEmpty(),
+                    alAceptar = dropUnlessResumed {
+                        aceptarAviso(app, context)
+                        nav.popBackStack()
+                    },
+                    alRechazar = dropUnlessResumed {
+                        rechazarAviso(app, context)
+                        nav.popBackStack()
+                    },
+                    alCerrar = cerrar,
+                    alAbrirPrivacidad = { abrirUrl(context, urlPrivacidad) },
+                )
+            }
         }
     }
 }
 
-private fun feedViewModel(app: ApunteScrollApp) =
-    FeedViewModel(app.contenedor.repositorio, app.contenedor.ajustes, app.alcance, app.contenedor.procesador.rearmando)
+private fun feedViewModel(app: ApunteScrollApp): FeedViewModel {
+    val c = app.contenedor
+    return FeedViewModel(
+        c.repositorio,
+        c.ajustes.piel,
+        app.alcance,
+        c.procesador.rearmando,
+        OpcionesFeed(alCambiarPiel = c.ajustes::cambiarPiel, cambiosFuera = c.cambiosFuera),
+    )
+}
+
+/** "Aceptar y activar": guarda el consentimiento y, si falta, lleva a Accesibilidad de Android. */
+private fun aceptarAviso(app: ApunteScrollApp, context: Context) {
+    val c = app.contenedor
+    c.intercepcion.aceptarAviso()
+    if (c.detector.habilitado()) {
+        Toast.makeText(context, R.string.aviso_toast_listo, Toast.LENGTH_LONG).show()
+    } else {
+        Toast.makeText(context, R.string.aviso_toast_buscar, Toast.LENGTH_LONG).show()
+        if (!c.detector.abrirActivacion(context)) {
+            Toast.makeText(context, R.string.abrir_ajustes_fallo, Toast.LENGTH_LONG).show()
+        }
+    }
+}
+
+/**
+ * "Ahora no". Si el servicio ya estaba activado sin consentimiento, se apaga: nunca queda un
+ * servicio corriendo sin que se haya aceptado el aviso.
+ */
+private fun rechazarAviso(app: ApunteScrollApp, context: Context) {
+    val c = app.contenedor
+    c.ajustesIntercepcion.anotarRechazo(System.currentTimeMillis())
+    if (c.ajustesIntercepcion.consentimientoVigente() || !c.detector.habilitado()) return
+    if (c.intercepcion.apagarServicio(retirar = true)) {
+        Toast.makeText(context, R.string.aviso_toast_apagado, Toast.LENGTH_LONG).show()
+    } else if (!abrirAccesibilidad(context)) {
+        Toast.makeText(context, R.string.abrir_ajustes_fallo, Toast.LENGTH_LONG).show()
+    }
+}
 
 private fun paginaViewModel(app: ApunteScrollApp, ruta: RutaPagina) =
     PaginaViewModel(app.contenedor.repositorio, app.contenedor.archivos, app.alcance, ruta.documentoId, ruta.pagina)
-
-/** Ejecuta [accion] solo si esta pantalla es la activa (no la que se está yendo). */
-private inline fun NavBackStackEntry.siEstaActiva(accion: () -> Unit) {
-    if (lifecycle.currentState == Lifecycle.State.RESUMED) accion()
-}
 
 /**
  * Cambia de sección guardando el estado de la anterior (volver a una sección la deja como

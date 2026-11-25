@@ -155,4 +155,153 @@
     <string name="ajustes_largo_media">Media (450 caracteres)</string>
     <string name="ajustes_largo_larga">Larga (600 caracteres)</string>
     <string name="ajustes_version">Versión %1$s</string>
+
+    <!-- Intercepción (F3): servicio. Lo que muestra Accesibilidad de Android. -->
+    <string name="servicio_nombre">ApunteScroll</string>
+    <string name="servicio_resumen">Te muestra tus apuntes cuando abrís Instagram o X.</string>
+    <string name="servicio_intro">Tus apuntes antes que tus redes.</string>
+    <string name="servicio_descripcion">Te muestra tus apuntes cuando abrís Instagram o X. Solo recibe el nombre de la app que pasa a la pantalla: no lee lo que ves ni lo que escribís, no toca nada por vos y nada sale de tu teléfono. Lo podés apagar cuando quieras.</string>
+
+    <!-- Aviso y consentimiento (pantalla propia). Si cambia lo que el servicio lee o guarda, subir VERSION_AVISO. -->
+    <string name="aviso_titulo">Tus apuntes, cuando abrís Instagram o X</string>
+    <string name="aviso_ya_activado">Activaste el servicio de ApunteScroll desde Ajustes de Android. Antes de que empiece a funcionar, leé esto y decinos si estás de acuerdo. Mientras tanto, no hace nada.</string>
+    <string name="aviso_nueva_version">Cambió lo que hace o guarda la intercepción: leelo de nuevo antes de seguir.</string>
+    <string name="aviso_intro">Si querés, ApunteScroll aparece encima de Instagram o X cuando las abrís y te muestra tus tarjetas primero. Vos elegís en Ajustes si después te deja entrar. Para darse cuenta de que las abriste, usa el servicio de accesibilidad de Android, que sigue funcionando aunque cierres ApunteScroll.</string>
+    <string name="aviso_lee_titulo">Qué lee</string>
+    <string name="aviso_lee">Solo el nombre interno de cada app que pasa a la pantalla (por ejemplo, «com.instagram.android»): Android se lo avisa a ApunteScroll cada vez que cambiás de app. No ve lo que hay en la pantalla, ni lo que escribís, ni tus mensajes o contraseñas.</string>
+    <string name="aviso_para_titulo">Para qué lo usa</string>
+    <string name="aviso_para">Para darse cuenta de que abriste Instagram o X y mostrarte tus apuntes encima. Con el nombre de las demás apps sabe si saliste de Instagram o X: por ejemplo, para que «Ir igual» valga hasta que te vayas, o para que tus apuntes vuelvan cuando se termina el pase. Solo recuerda cuál fue la última app que abriste, y nunca arma una lista de las apps que usás.</string>
+    <string name="aviso_guarda_titulo">Qué guarda y qué comparte</string>
+    <string name="aviso_guarda">Nada de esto sale de tu teléfono ni se comparte con nadie. En el teléfono guarda solo lo que elegís en Ajustes, qué tarjetas leíste para el pase, hasta qué hora te dura y avisos de funcionamiento (por ejemplo, si la pantalla de apuntes no llegó a aparecer o si otra app la tapó).</string>
+    <string name="aviso_no_hace_titulo">Qué no hace</string>
+    <!-- "Durante una llamada" depende de la prueba en la S23 (escenario 18): si no se confirma, se saca esa parte. -->
+    <string name="aviso_no_hace">No toca la pantalla ni aprieta nada por vos, no cambia ajustes del teléfono y no te impide apagar el servicio ni desinstalar la app. Solo abre su propia pantalla de apuntes y, cuando te queda 1 minuto de pase, te avisa con un mensaje corto. No aparece durante una llamada, con el teléfono bloqueado o si fijaste una app en la pantalla.</string>
+    <string name="aviso_android_titulo">Lo que te va a decir Android</string>
+    <!-- [verificar en la S23] las palabras exactas de One UI 8.5 (escenario 1): por eso no van entre comillas. -->
+    <string name="aviso_android">Al activarlo, Android te pregunta si querés darle control total del dispositivo y te avisa que podría ver y controlar la pantalla. Es el mismo aviso para cualquier servicio de accesibilidad: ApunteScroll está configurada para no leer el contenido de la pantalla ni hacer gestos. Un día después, Android puede mandarte una notificación para que revises el permiso. Es normal.</string>
+    <string name="aviso_pasos_titulo">Cómo activarlo</string>
+    <string name="aviso_pasos">Al tocar «Aceptar y activar» se abre Accesibilidad de Android. Entrá a «Aplicaciones instaladas» (en algunos teléfonos, «Apps descargadas»), tocá «ApunteScroll» y activá el interruptor.</string>
+    <string name="aviso_apagar_titulo">Cómo apagarlo</string>
+    <string name="aviso_apagar">Cuando quieras, desde Ajustes de ApunteScroll o desde Accesibilidad de Android. Si no lo activás, la app funciona igual: tus apuntes y el feed siguen acá.</string>
+    <string name="aviso_privacidad">Leer la política de privacidad</string>
+    <string name="aviso_aceptar_y_activar">Aceptar y activar</string>
+    <string name="aviso_aceptar">Aceptar</string>
+    <string name="aviso_ahora_no">Ahora no</string>
+    <string name="aviso_entendido">Entendido</string>
+    <string name="aviso_toast_buscar">Buscá «ApunteScroll» y activalo.</string>
+    <string name="aviso_toast_listo">Listo: la próxima vez que abras Instagram o X vas a ver tus apuntes.</string>
+    <string name="aviso_toast_apagado">Apagamos el servicio de ApunteScroll. Lo podés activar cuando quieras desde Ajustes.</string>
+    <string name="abrir_ajustes_fallo">No se pudo abrir Ajustes en este teléfono. Buscá «Accesibilidad» en Ajustes.</string>
+    <!-- Se completa en P1 (docs/privacidad.md con GitHub Pages). Vacío: el enlace no se muestra. -->
+    <string name="url_privacidad" translatable="false" />
+
+    <!-- Pantalla interceptada -->
+    <string name="intercepcion_motivo_abrio">Abriste %1$s: primero, tus apuntes.</string>
+    <string name="intercepcion_motivo_vencido">Se terminó tu pase de redes.</string>
+    <string name="intercepcion_panel">ApunteScroll, antes de %1$s</string>
+    <string name="intercepcion_cerrar">Cerrar y volver al inicio del teléfono</string>
+    <string name="intercepcion_cambiar_modo">Cambiar modo</string>
+    <string name="intercepcion_volver_feed">Volver a tus apuntes</string>
+    <string name="intercepcion_dividida">En pantalla dividida, %1$s sigue a la vista en la otra parte.</string>
+    <string name="intercepcion_vacio_titulo">Todavía no tenés apuntes</string>
+    <string name="intercepcion_vacio">Importá un PDF y vas a ver sus tarjetas acá cada vez que abras %1$s.</string>
+    <string name="intercepcion_importar">Importar un PDF</string>
+    <string name="puerta_cargando">Preparando tus tarjetas…</string>
+    <plurals name="puerta_pase_faltan">
+        <item quantity="one">Leé %1$d tarjeta más para ganar %2$d min de redes</item>
+        <item quantity="other">Leé %1$d tarjetas más para ganar %2$d min de redes</item>
+    </plurals>
+    <string name="puerta_pase_progreso">%1$d de %2$d</string>
+    <plurals name="puerta_pase_progreso_descripcion">
+        <item quantity="one">%1$d de %2$d tarjeta leída</item>
+        <item quantity="other">%1$d de %2$d tarjetas leídas</item>
+    </plurals>
+    <string name="puerta_pase_como_cuenta">Una tarjeta cuenta cuando la leés unos segundos, o cuando la marcás «Lo sé» después de verla.</string>
+    <string name="puerta_pase_listo">¡Listo! Ganaste %1$d min de redes.</string>
+    <string name="puerta_pase_sin_tarjetas">Todavía no tenés tarjetas para estudiar: podés entrar.</string>
+    <string name="puerta_pase_al_dia">Estás al día con tus apuntes: podés entrar.</string>
+    <string name="puerta_pase_activo">Tenés un pase activo: te quedan %1$d min.</string>
+    <string name="puerta_entrar">Entrar a %1$s · %2$d min</string>
+    <string name="puerta_entrar_con_pase">Entrar a %1$s</string>
+    <string name="puerta_recordatorio">Antes de entrar, leé un par de tarjetas.</string>
+    <string name="puerta_ir_igual">Ir igual</string>
+    <string name="puerta_ir_igual_en">Ir igual (%1$d)</string>
+    <string name="puerta_ir_igual_espera">Ir igual, disponible en unos segundos</string>
+    <string name="puerta_reemplazo">Elegiste ver tus apuntes en lugar de %1$s. Lo podés cambiar cuando quieras.</string>
+    <string name="puerta_volver_inicio">Volver al inicio</string>
+    <string name="toast_pase_hasta">Tenés pase hasta las %1$s.</string>
+    <string name="toast_ultimo_minuto">Te queda 1 minuto de pase.</string>
+
+    <!-- Estado del servicio (Inicio y Ajustes) -->
+    <string name="servicio_estado_sin_consentimiento">Apagada. ApunteScroll no se da cuenta cuando abrís Instagram o X.</string>
+    <string name="servicio_estado_activado_sin_aviso">Activaste el servicio desde Ajustes de Android, pero todavía no aceptaste el aviso: hasta entonces no hace nada.</string>
+    <string name="servicio_estado_aviso_nuevo">Cambió lo que hace la intercepción: leé el aviso de nuevo para que siga funcionando.</string>
+    <string name="servicio_estado_falta_activar">Falta un paso: activá «ApunteScroll» en Accesibilidad de Android.</string>
+    <string name="servicio_estado_se_apago">La intercepción se apagó. Android la apaga si forzás la detención de ApunteScroll, si un limpiador o el ahorro de batería la cierran, o si la apagaste en Accesibilidad. Volvé a activarla para que funcione.</string>
+    <string name="servicio_estado_se_apago_proteccion">También pasa si activaste la Protección avanzada de Android, aunque después la hayas apagado.</string>
+    <string name="servicio_estado_bateria">En este teléfono conviene dejar la batería de ApunteScroll «Sin restricciones».</string>
+    <string name="servicio_estado_restringidos">¿El interruptor aparece gris? Andá a Ajustes > Aplicaciones > ApunteScroll, tocá ⋮ y elegí «Permitir ajustes restringidos». Después volvé a intentarlo.</string>
+    <string name="servicio_estado_conectando">Activando…</string>
+    <string name="servicio_estado_no_responde">Está activada, pero Android no la está ejecutando. Apagala y volvé a prenderla en Accesibilidad, o reiniciá el teléfono.</string>
+    <string name="servicio_estado_funcionando">Funcionando: cuando abras Instagram o X vas a ver tus apuntes.</string>
+    <string name="servicio_estado_proteccion">Tenés activada la Protección avanzada de Android. Con ella, Android solo deja usar la accesibilidad a herramientas para personas con discapacidad, así que ApunteScroll no puede saber cuándo abrís Instagram o X. Tus apuntes y el feed siguen funcionando acá.</string>
+    <string name="servicio_ver_como">Ver cómo funciona</string>
+    <string name="servicio_ver_aviso">Ver el aviso</string>
+    <string name="servicio_activar">Activar</string>
+    <string name="servicio_activar_de_nuevo">Activar de nuevo</string>
+    <string name="servicio_abrir_accesibilidad">Abrir Accesibilidad</string>
+    <string name="servicio_abrir_bateria">Batería</string>
+
+    <!-- Avisos de funcionamiento -->
+    <string name="diag_no_aparece">La pantalla de apuntes no llegó a aparecer las últimas veces: Android no la dejó abrirse encima de otras apps.</string>
+    <!-- Sale del Bloqueador: lo tienen que confirmar testers con MIUI o HyperOS. -->
+    <string name="diag_no_aparece_xiaomi">En Ajustes > Aplicaciones > ApunteScroll > Otros permisos, activá «Mostrar ventanas emergentes mientras se ejecuta en segundo plano».</string>
+    <string name="diag_abrir_permisos">Abrir permisos</string>
+    <string name="diag_pelea">Otra app tapó tus apuntes. Si usás otra app que bloquea Instagram o X, sacalas de su lista: si no, las dos se pelean por la pantalla.</string>
+    <string name="diag_bucle">La pantalla de apuntes se abrió y se cerró sola varias veces seguidas, así que ApunteScroll paró unos segundos. Puede ser otra app que bloquea redes, o la pantalla dividida.</string>
+    <string name="accion_entendido">Entendido</string>
+
+    <!-- Inicio: tarjeta del aviso y acceso mínimo permanente -->
+    <string name="inicio_aviso_titulo">Tus apuntes, cuando abrís Instagram o X</string>
+    <string name="inicio_aviso_invitacion">ApunteScroll puede mostrarte tus tarjetas cada vez que abrís esas redes. Vos elegís si después te deja entrar.</string>
+    <string name="inicio_aviso_ahora_no">Ahora no</string>
+    <string name="inicio_aviso_pase">Pase activo hasta las %1$s.</string>
+    <string name="inicio_aviso_titulo_estado">Intercepción de redes</string>
+    <string name="inicio_aviso_titulo_diagnostico">Aviso de funcionamiento</string>
+    <string name="inicio_acceso_intercepcion">Mostrar mis apuntes al abrir Instagram o X</string>
+
+    <!-- Ajustes > Redes -->
+    <string name="ajustes_redes_titulo">Redes</string>
+    <string name="ajustes_redes_explicacion">Cuando abrís una de estas apps, ApunteScroll te muestra tus apuntes primero.</string>
+    <string name="ajustes_redes_estilo_carrusel">Se abre con el estilo Carrusel</string>
+    <string name="ajustes_redes_estilo_hilo">Se abre con el estilo Hilo</string>
+    <string name="ajustes_redes_no_instalada">No está instalada en este teléfono</string>
+    <string name="modo_pase">Pase por tarjetas</string>
+    <plurals name="modo_pase_detalle">
+        <item quantity="one">Leés %1$d tarjeta y entrás %2$d min.</item>
+        <item quantity="other">Leés %1$d tarjetas y entrás %2$d min.</item>
+    </plurals>
+    <string name="modo_recordatorio">Solo recordatorio</string>
+    <string name="modo_recordatorio_detalle">Primero ves tus apuntes; a los 5 segundos podés entrar igual hasta que salgas de la app.</string>
+    <string name="modo_reemplazo">Reemplazo total</string>
+    <string name="modo_reemplazo_detalle">Siempre ves tus apuntes en lugar de la red. Lo podés cambiar cuando quieras.</string>
+    <string name="ajustes_pase_titulo">Pase</string>
+    <string name="ajustes_pase_tarjetas">Tarjetas para ganarlo</string>
+    <string name="ajustes_pase_minutos">Minutos que dura</string>
+    <string name="ajustes_pase_explicacion">El pase sirve para todas las redes en «Pase por tarjetas». Una tarjeta cuenta cuando la leés unos segundos en la pantalla de apuntes, o cuando la marcás «Lo sé» después de verla. Cuando se termina, tus apuntes vuelven enseguida. Si reiniciás el teléfono, el pase se termina.</string>
+    <string name="ajustes_pase_activo">Pase activo hasta las %1$s</string>
+    <string name="ajustes_pase_terminar">Terminar ahora</string>
+    <string name="ajustes_redes_otra_app">Si usás otra app que bloquea Instagram o X, sacalas de su lista: si no, las dos apps se van a pelear por la pantalla.</string>
+    <string name="ajustes_redes_limites">En pantalla dividida o en una ventana flotante, la red sigue a la vista en su parte de la pantalla. Un video de X que ya estaba flotando sigue flotando.</string>
+    <string name="ajustes_redes_ver_aviso">Qué lee y qué guarda</string>
+    <string name="ajustes_redes_apagar">Apagar y retirar el permiso</string>
+    <string name="ajustes_redes_apagar_titulo">¿Apagar la intercepción?</string>
+    <string name="ajustes_redes_apagar_texto">ApunteScroll deja de mirar qué app abrís y apaga su servicio de accesibilidad. Lo podés volver a activar cuando quieras.</string>
+    <string name="ajustes_redes_apagar_confirmar">Apagar</string>
+    <string name="ajustes_redes_apagar_a_mano">Listo. Para terminar, apagá «ApunteScroll» en Accesibilidad de Android.</string>
+    <string name="ajustes_privacidad">Política de privacidad</string>
+    <plurals name="cantidad_minutos">
+        <item quantity="one">%d minuto</item>
+        <item quantity="other">%d minutos</item>
+    </plurals>
 </resources>

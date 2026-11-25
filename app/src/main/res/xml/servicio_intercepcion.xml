@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Servicio de intercepción (PLAN.md, sección 7). Alcance mínimo, a propósito (Google Play):
+    - solo eventos de cambio de ventana; de cada uno la app usa solo el nombre del paquete;
+    - no lee el contenido de las ventanas, ni ids de vistas, ni ventanas interactivas, y no hace gestos;
+    - no es una herramienta de accesibilidad (isAccessibilityTool="false");
+    - sin packageNames a propósito: sin los eventos del launcher no se sabe cuándo salís de la red;
+    - una sola versión: sin xml-v30 (el botón de accesibilidad del Bloqueador impide apagarlo).
+    Si cambia algo acá: revisar el aviso, la declaración de Play Console y el video.
+    PoliticaIntercepcionTest lo comprueba.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:notificationTimeout="0"
+    android:isAccessibilityTool="false"
+    android:description="@string/servicio_descripcion"
+    android:summary="@string/servicio_resumen"
+    android:intro="@string/servicio_intro"
+    android:settingsActivity="com.apuntescroll.ui.AbrirAjustesRedes"
+    tools:ignore="UnusedAttribute" />

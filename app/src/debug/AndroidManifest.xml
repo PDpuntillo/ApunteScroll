@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Red de prueba (Redes.DE_PRUEBA, solo debug): para mostrar en Ajustes si está instalada. -->
+    <queries>
+        <package android:name="com.sec.android.app.popupcalculator" />
+        <package android:name="com.google.android.calculator" />
+    </queries>
+</manifest>
