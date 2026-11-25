@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.apuntescroll.R
 import com.apuntescroll.feed.FiltroFeed
+import com.apuntescroll.feed.ItemEnPantalla
+import com.apuntescroll.feed.Lectura
 import com.apuntescroll.feed.PostFeed
 import com.apuntescroll.feed.TarjetaFeed
 import com.apuntescroll.ui.componentes.AvatarMateria
@@ -44,11 +46,14 @@ class AccionesFeed(
     val alAbrirHilo: (TarjetaFeed) -> Unit,
     val alFiltrar: (FiltroFeed) -> Unit,
     val alVolverAEmpezar: () -> Unit,
+    /** La tarjeta en foco se leyó (pantalla interceptada, F3). null: no se cuentan lecturas. */
+    val alLeer: ((TarjetaFeed) -> Unit)? = null,
 )
 
 /**
  * Hilo (estilo X): una tarjeta por publicación, en una lista con separadores. [margenes] no incluye
- * la barra de arriba (la lista empieza debajo de ella).
+ * la barra de arriba (la lista empieza debajo de ella). [cabecera] y [pie] van como primer y
+ * último elemento de la lista.
  */
 @Composable
 fun FeedHilo(
@@ -57,14 +62,18 @@ fun FeedHilo(
     margenes: PaddingValues,
     lista: LazyListState,
     acciones: AccionesFeed,
+    cabecera: @Composable () -> Unit = {},
+    pie: @Composable () -> Unit = {},
 ) {
     val visibles by remember(lista) { derivedStateOf { clavesVisibles(lista) } }
+    val foco by remember(lista) { derivedStateOf { claveEnFoco(lista) } }
 
     LazyColumn(
         state = lista,
         modifier = Modifier.fillMaxSize(),
         contentPadding = margenesDeLista(margenes),
     ) {
+        item(key = CLAVE_CABECERA, contentType = CLAVE_CABECERA) { cabecera() }
         item(key = "filtros", contentType = "filtros") {
             FilaFiltros(estado.materias, estado.filtro, estado.hayGuardadas, acciones.alFiltrar)
             HorizontalDivider()
@@ -78,6 +87,11 @@ fun FeedHilo(
                 conBotonHilo = post.totalSeccion > 1,
             )
             RegistrarVista(clave = post.clave, activo = post.clave in visibles) { acciones.alVer(tarjeta) }
+            acciones.alLeer?.let { alLeer ->
+                RegistrarVista(clave = "l${post.clave}", activo = post.clave == foco, ms = Lectura.msLectura(tarjeta.texto.length)) {
+                    alLeer(tarjeta)
+                }
+            }
             HorizontalDivider()
         }
         item(key = "fin", contentType = "fin") {
@@ -88,8 +102,14 @@ fun FeedHilo(
                 alVerTodas = { acciones.alFiltrar(FiltroFeed.Todas) },
             )
         }
+        item(key = CLAVE_PIE, contentType = CLAVE_PIE) { pie() }
     }
 }
+
+/** Claves de los elementos de la lista que no son publicaciones. */
+const val CLAVE_CABECERA = "cabecera"
+const val CLAVE_PIE = "pie"
+private val CLAVES_FIJAS = setOf(CLAVE_CABECERA, CLAVE_PIE, "filtros", "historias", "fin")
 
 /**
  * Una tarjeta como publicación del Hilo. También la usa la pantalla del hilo completo. El botón
@@ -151,6 +171,20 @@ fun PostHilo(post: PostFeed, marca: MarcaTarjeta, acciones: AccionesFeed, conBot
             }
         }
     }
+}
+
+/**
+ * La publicación en foco (Lectura.enFoco), entre los márgenes de la lista. Solo cuenta para las
+ * lecturas del pase (F3): de a una, así los tiempos de lectura no corren en paralelo.
+ */
+fun claveEnFoco(lista: LazyListState): Any? {
+    val info = lista.layoutInfo
+    val inicio = info.viewportStartOffset + info.beforeContentPadding
+    val fin = info.viewportEndOffset - info.afterContentPadding
+    val items = info.visibleItemsInfo
+        .filter { it.key !in CLAVES_FIJAS }
+        .map { ItemEnPantalla(it.key, it.offset, it.size) }
+    return Lectura.enFoco(items, inicio, fin)
 }
 
 /**

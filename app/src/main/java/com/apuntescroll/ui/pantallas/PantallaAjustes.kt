@@ -11,9 +11,11 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,11 +28,17 @@ import com.apuntescroll.datos.Ajustes
 import com.apuntescroll.datos.LargoTarjeta
 import com.apuntescroll.ui.componentes.PantallaBase
 
+/** Ajustes. [seccionRedes] (F3) va arriba de "Largo de las tarjetas" y avisa con [SnackbarHostState]. */
 @Composable
-fun PantallaAjustes(ajustes: Ajustes, modifier: Modifier = Modifier) {
+fun PantallaAjustes(
+    ajustes: Ajustes,
+    modifier: Modifier = Modifier,
+    seccionRedes: @Composable (SnackbarHostState) -> Unit = {},
+) {
     val largo by ajustes.largoTarjeta.collectAsStateWithLifecycle()
+    val avisos = remember { SnackbarHostState() }
 
-    PantallaBase(titulo = stringResource(R.string.ajustes_titulo), modifier = modifier) { margenes ->
+    PantallaBase(titulo = stringResource(R.string.ajustes_titulo), modifier = modifier, avisos = avisos) { margenes ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -38,6 +46,8 @@ fun PantallaAjustes(ajustes: Ajustes, modifier: Modifier = Modifier) {
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 8.dp),
         ) {
+            seccionRedes(avisos)
+
             Text(
                 text = stringResource(R.string.ajustes_largo_tarjeta),
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
@@ -70,8 +80,9 @@ fun PantallaAjustes(ajustes: Ajustes, modifier: Modifier = Modifier) {
     }
 }
 
+/** Una opción de una lista de elección única, con un [detalle] opcional debajo. */
 @Composable
-private fun FilaOpcion(texto: String, elegida: Boolean, alElegir: () -> Unit) {
+internal fun FilaOpcion(texto: String, elegida: Boolean, alElegir: () -> Unit, detalle: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -81,7 +92,16 @@ private fun FilaOpcion(texto: String, elegida: Boolean, alElegir: () -> Unit) {
     ) {
         // El clic lo maneja la fila entera; el botón es solo visual.
         RadioButton(selected = elegida, onClick = null)
-        Text(text = texto, modifier = Modifier.padding(start = 16.dp), style = MaterialTheme.typography.bodyLarge)
+        Column(Modifier.padding(start = 16.dp)) {
+            Text(text = texto, style = MaterialTheme.typography.bodyLarge)
+            if (detalle != null) {
+                Text(
+                    text = detalle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

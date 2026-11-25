@@ -5,8 +5,9 @@ redes sociales. Cuando abres Instagram o X, ApunteScroll se pone encima y te mue
 apuntes en vez del feed real. Se publica en **Google Play**.
 
 > Estado: **F0 (base), F1 (PDF → tarjetas) y F2 (feed) implementadas y probadas en la S23**
-> con un PDF digital (65 páginas) y un libro escaneado (176 páginas). Lo demás es el plan para
-> las fases siguientes.
+> con un PDF digital (65 páginas) y un libro escaneado (176 páginas). **F3 (intercepción)
+> implementada**, con sus pruebas locales; falta la prueba manual en la S23 (sección 14). Lo
+> demás es el plan para las fases siguientes.
 
 ---
 
@@ -21,7 +22,7 @@ apuntes en vez del feed real. Se publica en **Google Play**.
 | IA | **No** por ahora. Queda como idea futura (sección 12). |
 | Datos | Tus apuntes (PDFs, texto y tarjetas) no salen del teléfono. Sin cuentas ni servidor propio. ML Kit (el OCR de Google) sí envía diagnósticos a Google (ver sección 10). |
 | Funciones de estudio | Repaso espaciado, preguntas en el feed, materias y filtros, racha y estadísticas. |
-| Pase | Para entrar a la red real, estudias 15 tarjetas y ganas 10 minutos (configurable). |
+| Pase | Para entrar a la red real, lees 15 tarjetas en la pantalla de apuntes (cada una unos segundos, o "lo sé" después de verla) y ganas 10 minutos de redes, compartidos entre las redes en modo Pase (configurable). |
 | Tarjetas | ~450 caracteres por defecto (configurable: 300 / 450 / 600). |
 | Paquete | `com.apuntescroll` |
 | Distribución | **Google Play** con cuenta de desarrollador **personal** (ver sección 10). |
@@ -235,33 +236,58 @@ Una tarjeta por pantalla completa, letra grande, se pasa deslizando hacia arriba
 
 | Pieza | Detalle |
 |---|---|
-| Servicio | `AccessibilityService` que escucha solo `typeWindowStateChanged` y lee **solo el nombre del paquete** en primer plano. No lee el contenido de las pantallas de otras apps (`canRetrieveWindowContent="false"`). |
-| Apps | `com.instagram.android` → Carrusel; `com.twitter.android` (X) → Hilo. Se declaran en `<queries>` (no se usa `QUERY_ALL_PACKAGES`). La lista se puede ampliar (Instagram Lite, Threads, TikTok). |
-| Al detectarla | Abre `FeedInterceptadoActivity` directamente encima de la app (sin pulsar inicio antes, por lo aprendido en el Bloqueador), en su propia tarea, sin aparecer en Recientes, y con un freno contra ráfagas de eventos. |
-| Al salir | Atrás o cerrar → va al inicio del teléfono, no de vuelta a la red. |
-| Detector intercambiable | La detección va detrás de una interfaz (`DetectorDeApps`). Si Google Play rechazara la accesibilidad, el plan B es `UsageStatsManager` + permiso de superposición (ver sección 10.3). |
+| Servicio | `ServicioIntercepcion`, un `AccessibilityService` que escucha solo `typeWindowStateChanged`, con `canRetrieveWindowContent="false"`, `flagDefault` y `isAccessibilityTool="false"`. Recibe el nombre de paquete de **cada** app que pasa a primer plano: no usa `packageNames`, porque sin los eventos del launcher y de las demás apps no se sabría cuándo sales de la red (la visita de "Ir igual", el vencimiento del pase, las llamadas y el corte de bucles dependen de eso). Del evento usa **solo** `packageName`; nunca su texto, clase, ventana, nodos ni `toString()`. Solo recuerda, en memoria, cuál fue la última app al frente. No hace gestos, no pulsa inicio y no hace acciones globales; lo único que hace sobre sí mismo es `disableSelf()`, a pedido del usuario. Sin consentimiento vigente no hace **nada**, aunque Android lo tenga activado. |
+| Apps | `com.instagram.android` → Carrusel; `com.twitter.android` (X) → Hilo. Se declaran en `<queries>` solo para mostrar en Ajustes si están instaladas (no se usa `QUERY_ALL_PACKAGES`). La lista va en el código (`Redes.CONOCIDAS`); ampliarla (Instagram Lite, Threads, TikTok) es una versión nueva, con aviso y declaración actualizados. En debug hay una red de prueba (la calculadora), apagada por defecto. |
+| Al detectarla | Abre `FeedInterceptadoActivity` directamente encima de la app (sin pulsar inicio antes, por lo aprendido en el Bloqueador), en su propia tarea (`taskAffinity`), `singleTask`, `noHistory`, fuera de Recientes y con `NO_USER_ACTION` (X no pasa a PiP). Un **freno** no descarta eventos: lo que frena lo revisa más tarde. Corta los **rebotes** (la red vuelve encima de la pantalla 3 veces en menos de 2 s, sin pasar por otra app y con la pantalla visible menos de 1 s) con una pausa de 30 s y un aviso. Un **vigía** comprueba a los 1,5 s que la pantalla apareció, reintenta una vez y, con 2 fallos, avisa en Inicio (con el atajo a los permisos de Xiaomi); mientras tanto, los eventos de esa red no relanzan. No se lanza con el teléfono bloqueado o la pantalla apagada (se vuelve a mirar al desbloquear), con una app fijada ni durante una llamada. |
+| Al salir | Atrás o cerrar → el inicio del teléfono, nunca de vuelta a la red. Atrás dentro del hilo vuelve al feed. |
+| Detector intercambiable | La detección va detrás de interfaces (`DetectorDeApps`, `ReceptorPrimerPlano` y `LanzadorPantalla`): el detector avisa cada paquete al coordinador y le entrega quién puede abrir pantallas. El plan B (sección 10.3) es otra implementación de esas interfaces, sin tocar el coordinador, el motor ni la UI. La lógica (clasificación, reglas, freno, motor, pase, puerta y estados) es Kotlin puro y probado (`intercepcion/reglas/`). |
 
 ### Aviso y consentimiento (lo exige Google Play)
 
 Antes de mandar al usuario a Ajustes de accesibilidad, una **pantalla propia y separada** de
-cualquier otro aviso explica:
+cualquier otro aviso explica con exactitud:
 
-- qué lee el servicio: **solo qué app está abierta**, nada de lo que se ve en ella;
-- para qué: mostrar tus apuntes cuando abres Instagram o X;
-- que esa información **no sale del teléfono** ni se guarda;
+- qué lee: **solo el nombre interno de cada app que pasa a la pantalla**, nada de lo que se ve
+  ni de lo que se escribe en ella;
+- para qué: darse cuenta de que abriste Instagram o X y, con el nombre de las demás apps, saber
+  cuándo saliste (para "Ir igual" y para que tus apuntes vuelvan al terminar el pase). Solo
+  recuerda la última app y nunca arma una lista de las apps que usas;
+- qué guarda: **no guarda qué apps usas**; solo tus elecciones, el progreso y el vencimiento del
+  pase, y avisos de funcionamiento. Nada sale del teléfono;
+- qué no hace, lo que va a decir Android al activarlo, cómo activarlo y cómo apagarlo;
 
 y pide aceptar con un botón explícito ("Aceptar y activar") o rechazar ("Ahora no"). Si
-rechazas, la app sigue funcionando (el feed dentro de la app) y el aviso se puede volver a
-abrir desde Ajustes y desde la pantalla de inicio.
+rechazas, la app sigue funcionando (el feed dentro de la app). Si el servicio ya estaba activado
+desde Android sin aceptar el aviso, "Ahora no" lo apaga (`disableSelf()`), y el aviso se abre
+solo una vez por proceso. El aviso se puede volver a abrir siempre desde Ajustes > Redes y desde
+Inicio: una tarjeta que deja de ofrecerse después de 3 rechazos, y un acceso mínimo y permanente
+("Mostrar mis apuntes al abrir Instagram o X") en el estado vacío y al pie del feed. La tarjeta
+de Inicio se ve también con Inicio vacío, que es lo que ve el revisor de Google Play. El aviso
+tiene versión (`VERSION_AVISO`): si cambia lo que el servicio lee o guarda, se sube y el
+consentimiento anterior deja de valer. "Apagar y retirar el permiso", en Ajustes, borra el
+consentimiento, el pase y el progreso, y apaga el servicio.
 
 ### Modos (en Ajustes, por app)
 
-1. **Pase por tarjetas** (por defecto): para entrar a la red real, estudias N tarjetas (15) y
-   ganas M minutos (10). Cuando vence el pase, la próxima vez que la red cambie de pantalla
-   vuelve el feed de apuntes.
+1. **Pase por tarjetas** (por defecto): para entrar a la red real, lees N tarjetas (15) y ganas
+   M minutos (10). Una tarjeta cuenta una vez si estuvo **en foco** (la publicación más visible;
+   en el Carrusel, la diapositiva actual con el carrusel quieto) su tiempo de lectura
+   (12 ms por carácter, entre 2,5 y 6 s), o si la marcas "lo sé" después de haberla visto. Solo
+   cuenta en la pantalla interceptada; el feed de Inicio no suma. Con un pase vigente no suma
+   nada. La meta es `min(N, progreso + disponibles)` (si quedan menos tarjetas por estudiar, se
+   puede entrar igual; marcar "lo sé" sin leer no baja la meta). El pase es **uno solo,
+   compartido** por todas las redes en este modo. Se mide con `elapsedRealtime` (cambiar la hora
+   no lo estira) y **termina si reinicias el teléfono**. Cuando vence con la red abierta, el feed
+   vuelve enseguida (un temporizador, `VENCER_EN_VIVO`), y un minuto antes aparece un mensaje
+   corto ("Te queda 1 minuto de pase").
 2. **Reemplazo total**: nunca deja pasar a esa red.
 3. **Solo recordatorio**: muestra el feed primero, con un botón "Ir igual" que se activa a los
-   5 segundos.
+   5 segundos. Vale por la **visita**: no se pierde por la cortina, el teclado, un permiso o la
+   hoja de compartir, y aguanta hasta 30 s en otra app (contestar un WhatsApp y volver). Termina
+   si otra app queda más de 30 s al frente, si se apaga la pantalla o si abres ApunteScroll.
+
+Durante una llamada (también de WhatsApp o de Instagram) no se intercepta, y la red queda libre
+hasta que salgas de ella, en cualquier modo.
 
 Lo que la app **no** hace, porque Google Play lo prohíbe con la accesibilidad: cambiar ajustes,
 impedir que se desactive el servicio o se desinstale la app (nada de "modo estricto" como el del
@@ -269,12 +295,24 @@ Bloqueador), ni saltarse controles de seguridad de Android.
 
 ### A tener en cuenta
 
-- Si el **Bloqueador** también bloquea Instagram o X, las dos apps se van a pelear por la
-  pantalla. Hay que quitar esas apps de las listas del Bloqueador, o integrar las dos más
-  adelante.
-- En Android 17, si el usuario activa la **Protección avanzada**, Android le quita la
-  accesibilidad a las apps que no son herramientas de accesibilidad. La app tiene que darse
-  cuenta de que el servicio se apagó y explicarlo.
+- **Otra app de bloqueo** (como el Bloqueador) con Instagram o X en su lista: las dos apps se
+  pelean por la pantalla. Ajustes lo explica con un texto genérico, y si el Bloqueador pasa al
+  frente justo después de abrir la pantalla de apuntes, Inicio lo avisa. No se leen las listas
+  de servicios de otras apps ni se nombra al Bloqueador en la app. Integrarlas, más adelante.
+- En Android 17, con la **Protección avanzada**, Android le quita la accesibilidad a las apps que
+  no son herramientas de accesibilidad. La app lo detecta (`AdvancedProtectionManager`, con el
+  permiso normal `QUERY_ADVANCED_PROTECTION_MODE`) y lo explica.
+- **Pantalla dividida y vista emergente**: la red sigue a la vista en su parte; no se relanza
+  (sería un bucle) y se avisa con una franja.
+- Un video de X que ya estaba en **PiP** sigue flotando.
+- **Compartir hacia Instagram** desde la galería también intercepta (no se distingue sin leer la
+  clase de la ventana, que no se lee).
+- Durante cualquier **llamada de voz o video por internet** no se intercepta.
+- Android 14 o más oculta algunas pantallas a la accesibilidad: si se pasa a una sin pasar por el
+  launcher, la "última app" queda vieja y, al vencer el pase, el feed puede aparecer encima (✕
+  lleva al inicio). Se mide.
+- **Plan C**, si Google pidiera achicar el alcance: `packageNames` con las redes, SystemUI y los
+  launchers, perdiendo parte de lo anterior.
 
 ---
 
@@ -322,7 +360,9 @@ com.apuntescroll
 ├── pdf/           extracción (PdfBox), OCR (PdfRenderer + ML Kit), worker de procesamiento, rearmado
 ├── dominio/       Kotlin puro y probado: limpieza y corte en tarjetas (después, repaso y preguntas)
 ├── feed/          Kotlin puro y probado: orden del feed y publicaciones de Hilo y Carrusel
-├── intercepcion/  servicio de accesibilidad, aviso y consentimiento, pantalla interceptada, pases
+├── intercepcion/  servicio de accesibilidad, detector, coordinador y pantalla interceptada
+│   ├── reglas/    Kotlin puro y probado: clasificación, reglas, freno, motor, pase, puerta, estados
+│   └── ui/        pantalla interceptada, aviso y consentimiento, tarjeta de Inicio, Ajustes > Redes
 └── ui/            MainActivity, navegación, biblioteca, feed (Hilo/Carrusel), perfil, ajustes
 ```
 
@@ -350,6 +390,12 @@ de la base como red de seguridad y cada cambio lleva su migración.
 - Pruebas locales (JUnit) de `dominio/` y `feed/` (limpieza, corte, orden del feed y
   publicaciones; después repaso y detector de preguntas), con textos de ejemplo de apuntes
   reales, y del traspaso de progreso al rearmar.
+- Intercepción: el motor se prueba con secuencias de eventos con reloj (`Escenario`), además de
+  la clasificación, las reglas, el freno, el pase, la puerta y los estados del servicio.
+- `PoliticaIntercepcionTest` lee el XML del servicio, el manifiesto y el código, y falla si se
+  pide de más (contenido de ventanas, gestos, `packageNames`, permisos), si el servicio usa algo
+  del evento además del paquete o si se renombra: si falla, hay que revisar el aviso, la
+  declaración y el video.
 - Extracción, OCR y pantallas: pruebas a mano en la S23 con un PDF digital y uno escaneado.
 
 ---
@@ -368,8 +414,8 @@ de la base como red de seguridad y cada cambio lleva su migración.
 | **API objetivo 36** (desde el 31/8/2026) | `targetSdk = 36`, con sus cambios: edge-to-edge obligatorio y "atrás predictivo". |
 | **Formato** | Android App Bundle (`.aab`), firmado con una clave de subida que se guarda **fuera del repo**; Google firma la versión final (Play App Signing). |
 | **Páginas de memoria de 16 KB** | Las apps con target 35 o más tienen que soportarlas en dispositivos de 64 bits. PdfBox es Java puro; para ML Kit se usa la variante de Play services. Se comprueba en el *App Bundle Explorer* de Play Console ("Supports 16 KB"). |
-| **Accesibilidad** (no es una herramienta de accesibilidad) | No se puede marcar `isAccessibilityTool`. Hace falta: (1) **declaración en Play Console** con el motivo ("funcionalidad de la app"), si se recopilan datos con la API y un **video**; (2) mencionar el uso de accesibilidad en la **ficha** de Play; (3) el **aviso y consentimiento** dentro de la app (sección 7); (4) explicar por qué no alcanza una API más acotada (ver 10.3). Si cambia el uso, se vuelve a declarar. |
-| **Política de privacidad** | URL pública. Se publica desde este repo con GitHub Pages (`docs/privacidad.md`). |
+| **Accesibilidad** (no es una herramienta de accesibilidad) | No se puede marcar `isAccessibilityTool`. Hace falta: (1) **declaración en Play Console**: se marca "Funcionalidades de la app" y se responde **No** a recopilar o compartir datos con la API (nada sale del teléfono), más un **video** (10.2); (2) mencionar el uso de accesibilidad en la **ficha** de Play, nombrando las redes solo de forma descriptiva: "ApunteScroll usa la API de servicios de accesibilidad solo para detectar cuándo abres las redes sociales que elegiste y mostrarte tus apuntes en su lugar. No lee el contenido de la pantalla y esa información no sale de tu teléfono. ApunteScroll no está afiliada a esas redes.", con el mensaje del último minuto de pase en la descripción; (3) el **aviso y consentimiento** dentro de la app (sección 7); (4) explicar por qué no alcanza una API más acotada (10.3): el formulario de una app que no es herramienta no tiene un campo para eso, así que el argumento va en la ficha y, si hace falta, en una apelación. Si cambia el uso, se vuelve a declarar. |
+| **Política de privacidad** | URL pública. Se publica desde este repo con GitHub Pages (`docs/privacidad.md`), con una sección de accesibilidad que dice lo mismo que el aviso, y un enlace dentro de la app (`url_privacidad`, vacío hasta P1: el enlace no se muestra). |
 | **Seguridad de los datos** | Formulario en Play Console. Los apuntes no salen del teléfono, pero **ML Kit (variante de Play services) envía a Google** información del dispositivo y de la app, métricas de rendimiento y códigos de error, con identificadores del dispositivo y de la instalación, para diagnóstico y analítica ([divulgación de ML Kit](https://developers.google.com/ml-kit/android-data-disclosure)). Respuestas: recopila datos **sí** (por el SDK); tipos "ID del dispositivo u otros" y "Información y rendimiento de la app > Diagnóstico"; se comparten **no**; finalidad analítica; cifrados en tránsito; no opcionales. Revisar la página de ML Kit al completar el formulario, porque cambia con cada versión. La política de privacidad tiene que decir lo mismo. |
 | **Contenido de la app** | Cuestionario de clasificación por edad, público objetivo **mayores de 18** (universitarios; evita la política de Familias), sin anuncios. |
 | **Marcas y suplantación** | Nombre e ícono propios. Sin logos, colores ni capturas de Instagram o X. En la ficha, las redes se nombran solo de forma descriptiva ("cuando abres tus redes sociales…"), nunca como si fuera una app oficial. |
@@ -381,25 +427,33 @@ Para ApunteScroll alcanza con la verificación de la cuenta de Play Console.
 
 ### 10.2 Video para la declaración de accesibilidad
 
-Grabación de pantalla en la S23 (subida a YouTube como "no listado") que muestre, en orden:
+Grabación de pantalla en la S23 (subida a YouTube como "no listado", sin pedir inicio de sesión
+y con subtítulos que expliquen cada paso, por ejemplo "el servicio solo lee el nombre de la app
+en primer plano"), en este orden:
 
-1. Abrir la app.
-2. Llegar a la pantalla de aviso y consentimiento, con todo el texto visible.
-3. Aceptar y activar el servicio en Ajustes de accesibilidad.
-4. Rechazar, y volver a abrir el aviso.
-5. La función principal: abrir Instagram y que aparezca el feed de apuntes (con subtítulos que
-   lo expliquen).
+1. Instalación limpia: abrir la app.
+2. La tarjeta de Inicio → el aviso (desplazarlo despacio, con todo el texto visible) → **Ahora no**.
+3. Mostrar que la app funciona igual (el feed dentro de la app).
+4. Ajustes > Redes > "Ver cómo funciona" → el aviso de nuevo → **Aceptar y activar** → el
+   interruptor de Accesibilidad de Android.
+5. La función principal: abrir Instagram y que aparezca el Carrusel de apuntes.
+
+(El rechazo va antes de aceptar: con el consentimiento ya dado, el aviso muestra solo
+"Entendido". Otra forma: grabar "Apagar y retirar el permiso" y volver a abrir el aviso.)
 
 ### 10.3 Por qué accesibilidad, y plan B
 
 La política pide usar APIs más acotadas cuando alcancen. La alternativa sería consultar
-`UsageStatsManager` cada segundo para saber qué app está en primer plano. Eso necesita un
-servicio corriendo todo el tiempo (con su propia declaración), gasta batería, reacciona con
-retraso y, además, para abrir la pantalla encima hace falta el permiso de superposición. La
-accesibilidad avisa al instante y sin servicio extra. Ese es el argumento para la declaración.
+`UsageStatsManager` cada segundo para saber qué app está en primer plano. Eso ve todas las apps,
+necesita un servicio en primer plano corriendo todo el tiempo (con su propia declaración,
+`specialUse`, y su video), gasta batería, reacciona con retraso y, además, para abrir la
+pantalla encima hace falta el permiso de superposición. La accesibilidad avisa al instante, con
+solo el nombre del paquete y sin servicio extra. Ese es el argumento para la declaración.
 
-Si Google rechaza la declaración, se cambia la implementación de `DetectorDeApps` por la de
-`UsageStatsManager` + superposición, sin tocar el resto de la app.
+Si Google rechaza la declaración, se cambia la implementación de `DetectorDeApps` y
+`LanzadorPantalla` por la de `UsageStatsManager` + superposición, sin tocar el resto de la app.
+Antes de quitar la declaración hay que publicar un bundle **sin el servicio en todas las
+pistas**. Plan C, antes del B: `packageNames` con las redes, SystemUI y los launchers.
 
 ### 10.4 Calendario de publicación
 
@@ -470,10 +524,10 @@ Cada fase termina con una versión que se puede instalar y probar en la S23.
 | **F0. Base** ✅ | Proyecto Android con target 36, edge-to-edge, tema, barra de navegación con secciones vacías, Ajustes con el largo de tarjeta, README con cómo compilar. | La versión debug abre en la S23 ✓. |
 | **F1. PDF → tarjetas** ✅ | Materias, importar PDFs, worker con texto + OCR, limpieza y corte, biblioteca con progreso, lista de tarjetas por documento, ver la página original. | Un PDF digital y uno escaneado tuyos quedan en tarjetas legibles ✓ (65 páginas → 423 tarjetas; libro escaneado de 176 páginas → 3102 tarjetas, OCR en unos 2 min). |
 | **F2. Feed** ✅ | Pieles Hilo y Carrusel, "lo sé", guardar, marcar vistas, historias/filtro por materia, hilo completo de una sección, rearmado cuando cambia el armado. | Scrolleas tus apuntes en los dos estilos ✓. |
-| **F3. Intercepción** | Servicio de accesibilidad, aviso y consentimiento, pantalla interceptada, modos y pases. | Abrir Instagram muestra el Carrusel y abrir X muestra el Hilo. |
-| **P1. Publicación (prueba)** | Clave de subida, activar R8 en la versión release (y probarla con un PDF digital y uno escaneado), pantalla de licencias de código abierto, política de privacidad, ficha, formularios de Play Console, declaración y video, prueba cerrada. | La prueba cerrada está abierta con 12+ testers. |
+| **F3. Intercepción** | Servicio de accesibilidad, aviso y consentimiento, pantalla interceptada, modos y pases. Implementada (falta la prueba en la S23). | Abrir Instagram muestra el Carrusel y abrir X muestra el Hilo, y los escenarios de la prueba manual (README, "Probar la intercepción") están anotados en la sección 14. |
+| **P1. Publicación (prueba)** | Clave de subida, activar R8 en la versión release (y probarla con un PDF digital y uno escaneado), pantalla de licencias de código abierto, política de privacidad (y su URL en la app, `url_privacidad`), ficha, formularios de Play Console, declaración y video, prueba cerrada. Además, **antes de la primera subida**: un **apunte de ejemplo** (un PDF propio en `assets/`, importado por el flujo normal desde "Probar con un apunte de ejemplo" en Inicio y Biblioteca vacías, con `ArchivosPdf.copiarAsset` y `RepositorioApuntes.importarEjemplo()`), para que el revisor y el video no vean el feed vacío; las instrucciones en "Acceso a la app" de Play Console; y la aclaración de que ApunteScroll no está afiliada a Instagram ni a X en un "Acerca de" dentro de la app. | La prueba cerrada está abierta con 12+ testers. |
 | **F4. Repaso y preguntas** | Leitner, mezcla del feed, preguntas manuales y automáticas, "Estás al día". | Las tarjetas que marcas vuelven en las fechas correctas. |
-| **F5. Racha y estadísticas** | Registro diario, metas, perfil, gráfico. | La racha y el progreso por materia se ven bien después de unos días de uso. |
+| **F5. Racha y estadísticas** | Registro diario, metas, perfil, gráfico. Las intercepciones se cuentan con `CoordinadorIntercepcion.alInterceptar` (solo los lanzamientos que no son reintentos, sin repetir la misma red dentro de 3 s). Guardarlas cambia lo que guarda la intercepción: subir `VERSION_AVISO` a 2, actualizar el aviso y la política, y revisar la declaración. | La racha y el progreso por materia se ven bien después de unos días de uso. |
 | **F6. Pulido** | Editar tarjetas (corregir OCR), copia de seguridad (exportar e importar un .zip), modo oscuro, ícono final. | — |
 | **P2. Producción** | Solicitud de acceso a producción y lanzamiento. | ApunteScroll está en Google Play. |
 
@@ -510,8 +564,26 @@ corre la prueba cerrada.
 | La prueba cerrada no llega a 12 testers o Google la considera con **poco uso**. | Reclutar de más (15–20) y pedirles que usen la app de verdad durante los 14 días. |
 | PDFs con columnas, tablas o fórmulas: el texto sale desordenado o con símbolos sueltos. | Botón para ver la página original; editar tarjetas (F6). |
 | OCR lento en documentos largos (~0,5–1,5 s por página). | Worker en segundo plano por tandas, con el avance a la vista ("Leyendo páginas: 12 de 40"). |
-| Instagram o X cambian de paquete o de comportamiento. | Lista de paquetes configurable. |
-| Android sigue restringiendo la accesibilidad (por ejemplo, la Protección avanzada de Android 17). | Detectar el servicio apagado y explicarlo; el feed dentro de la app sigue funcionando. |
+| Instagram o X cambian de paquete o de comportamiento. | La lista va en el código (`Redes.CONOCIDAS`): se amplía con una versión nueva (aviso, `<queries>` y declaración). |
+| Android sigue restringiendo la accesibilidad (por ejemplo, la Protección avanzada de Android 17). | Detectar el servicio apagado y explicarlo; el feed dentro de la app sigue funcionando. Si el permiso `QUERY_ADVANCED_PROTECTION_MODE` diera problemas, se saca y queda el texto genérico de "se apagó". |
+| Instagram y X mandan pocos eventos al navegar por dentro (Reels): el pase no se corta a tiempo. | Vencimiento en vivo con un temporizador (`VENCER_EN_VIVO`). Se mide en la calibración (14). |
+| El vencimiento en vivo abre el feed encima de otra app porque la "última app" quedó vieja (pantallas que Android 14+ oculta a la accesibilidad). | Pasa por las mismas reglas y ✕ lleva al inicio. Si aparece en la calibración o lo reportan testers, `VENCER_EN_VIVO = false`. |
+| Google Play cuestiona que el servicio reciba los eventos de todas las apps, o pide "una API más acotada". | Aviso exacto y visible con Inicio vacío, video completo y alcance mínimo vigilado por `PoliticaIntercepcionTest`. Plan C (`packageNames`) y plan B detrás de `DetectorDeApps`. |
+| `AudioManager.mode` no refleja una llamada de Instagram, o una app lo deja trabado en "comunicación": la intercepción dejaría de actuar sin avisar. | Prueba en la S23 (14). Si falla, se saca la frase del aviso y se acepta el límite. |
+| El aviso de desbloqueo (`USER_PRESENT`) no llega o llega tarde. | Se revisa cada 500 ms durante 10 s después de encender la pantalla. |
+| Lista de transitorios (ventanas que no son "salir de la red") incompleta en One UI. | El error solo agrega recordatorios de más. Se ajusta con la calibración. |
+| Xiaomi, Redmi o POCO no dejan abrir la pantalla encima. | Vigía, reintento y aviso con el atajo a sus permisos. Lo tienen que confirmar testers con esas marcas. |
+| Pelea con el Bloqueador sin detección (si pulsa inicio sin llegar a mostrarse). | Texto fijo en Ajustes. La prueba manual dice qué pasa en realidad. |
+| El Toast del último minuto no aparece desde segundo plano en algún Android. | El pase funciona igual. |
+| One UI no resalta el servicio en Accesibilidad, o el camino tiene otro nombre. | Pasos escritos en el aviso; se ajustan con lo que dé la prueba. |
+| La primera intercepción después de una actualización espera el rearmado de las tarjetas. | La puerta muestra "Preparando tus tarjetas…" con "Cerrar" disponible. Se mide. |
+| Cada intercepción relee todas las tarjetas (hoy unas 3500) en un `FeedViewModel` nuevo. | Se mide el tiempo hasta la primera tarjeta ("Displayed"); si pasa de ~500 ms, se cachea la última lectura en el Contenedor. |
+| `noHistory` cierra el feed con la pantalla apagada (no es lo esperado en AOSP). | El progreso queda guardado; solo se reinicia la cuenta de 5 s. |
+| La pausa contra bucles deja 30 s libres si un fabricante devuelve la red arriba una y otra vez. | Solo cuenta sin otra app en el medio y con la pantalla visible menos de 1 s, y se avisa en Inicio. No es una medida antitrampa: el servicio siempre se puede apagar. |
+| El revisor o el video ven el feed vacío. | La puerta deja entrar con meta 0. En P1, el apunte de ejemplo y las instrucciones. |
+| Se renombra `ServicioIntercepcion` después de publicar: se apagaría en todos los teléfonos. | Comentario en el manifiesto y una prueba de política que lo nombra. |
+| La notificación de Android de las 24 h asusta al usuario. | Se anticipa en el aviso. |
+| Compartir hacia Instagram desde la galería intercepta. | Se acepta. La única salida sería leer la clase de la ventana, que cambia el aviso y la declaración. |
 
 ---
 
@@ -522,13 +594,25 @@ corre la prueba cerrada.
 - Rearmar las tarjetas al cambiar el largo en Ajustes (hoy vale solo para los PDFs nuevos); el
   progreso de las tarjetas se perdería casi todo, así que pediría confirmación.
 - Reclutar testers (10.6).
+- **F3 en la S23**: correr los escenarios de "Probar la intercepción" (README) y anotar acá cada
+  resultado, en especial la **calibración** (cada cuánto mandan eventos Instagram y X por dentro,
+  y qué paquetes de One UI hay que sumar a `ClasificadorPaquetes.TRANSITORIOS`; decide
+  `VENCER_EN_VIVO`) y lo marcado **[verificar en la S23]** en el código y los textos: el paquete
+  de la calculadora de Samsung, el camino exacto en One UI 8.5 y si resalta el servicio, las
+  palabras de los diálogos de Android (`aviso_android`), el modo de audio en llamadas y
+  videollamadas de Instagram (`aviso_no_hace`), que `USER_PRESENT` llegue con
+  `RECEIVER_EXPORTED`, el Toast desde segundo plano (también en la API 37), que `noHistory` no
+  cierre el feed con la pantalla apagada, que `QUERY_ADVANCED_PROTECTION_MODE` quede concedido y
+  el texto de la notificación de las 24 h.
 
 ---
 
 ## Fuentes (Google Play, consultadas el 23/11/2026)
 
 - [Uso de la API AccessibilityService](https://support.google.com/googleplay/android-developer/answer/10964491)
-- [Permisos y APIs que acceden a información sensible](https://support.google.com/googleplay/android-developer/answer/16909972)
+- [Permisos y APIs que acceden a información sensible](https://support.google.com/googleplay/android-developer/answer/16909972) (vista previa de la política de 2027)
+- [Permisos y APIs que acceden a información sensible, texto vigente](https://support.google.com/googleplay/android-developer/answer/16558241)
+- [Políticas del Programa para Desarrolladores](https://support.google.com/googleplay/android-developer/answer/17190352)
 - [Requisitos de prueba para cuentas personales nuevas](https://support.google.com/googleplay/android-developer/answer/14151465)
 - [Elegir el tipo de cuenta de desarrollador](https://support.google.com/googleplay/android-developer/answer/13634885)
 - [Información requerida por tipo de cuenta](https://support.google.com/googleplay/android-developer/answer/13628312)

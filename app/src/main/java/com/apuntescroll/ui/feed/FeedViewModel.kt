@@ -2,7 +2,6 @@ package com.apuntescroll.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.apuntescroll.datos.Ajustes
 import com.apuntescroll.datos.RepositorioApuntes
 import com.apuntescroll.datos.bd.ColorMateria
 import com.apuntescroll.datos.bd.FirmaTarjetas
@@ -57,23 +56,45 @@ data class EstadoFeed(
 /** Lo que el usuario cambió en esta sesión y todavía no está en la foto del feed. */
 data class MarcaTarjeta(val sabida: Boolean, val guardada: Boolean)
 
+/** Cuenta lo que se estudia para el pase (F3; lo implementa InterceptadoViewModel). */
+interface ObservadorEstudio {
+    fun alVer(tarjetaId: Long)
+    fun alLeer(tarjetaId: Long)
+    fun alMarcarSabidas(tarjetaIds: List<Long>)
+}
+
+/** Lo que cambia entre el feed de Inicio y el de la pantalla interceptada (F3). */
+class OpcionesFeed(
+    /** null: la piel la fija otro (la red interceptada) y no hay botón para cambiarla. */
+    val alCambiarPiel: ((PielFeed) -> Unit)? = null,
+    /** Si no es null, cuenta las lecturas para el pase (solo la pantalla interceptada). */
+    val estudio: ObservadorEstudio? = null,
+    /** Cambia cuando otra pantalla escribió en la base: se recarga al volver a primer plano. */
+    val cambiosFuera: StateFlow<Long>? = null,
+    /** Al cerrarse este feed, si escribió algo, cuando terminan sus escrituras. */
+    val alCerrarConCambios: (() -> Unit)? = null,
+)
+
 /**
  * Feed de tarjetas (F2). El orden se arma una vez (al abrir, al cambiar de filtro o de piel, o al
  * actualizar) y no se reacomoda mientras se scrollea: "lo sé" y "guardar" se ven al instante con
  * [marcas], y se guardan en la base.
  *
  * La pantalla del hilo usa esta misma instancia (AppRaiz), así lo que se marca o se ve en el hilo
- * queda también en el feed.
+ * queda también en el feed. Lo usan Inicio y la pantalla interceptada (F3), con distintas [OpcionesFeed].
  */
 class FeedViewModel(
     private val repositorio: RepositorioApuntes,
-    private val ajustes: Ajustes,
+    /** Inicio: la elegida en Ajustes. Pantalla interceptada: la de la red. */
+    val piel: StateFlow<PielFeed>,
     private val alcanceApp: CoroutineScope,
     /** true mientras se rearman PDFs al abrir la app (ProcesadorDocumentos.rearmando). */
     private val rearmando: StateFlow<Boolean>,
+    private val opciones: OpcionesFeed = OpcionesFeed(),
 ) : ViewModel() {
 
-    val piel: StateFlow<PielFeed> = ajustes.piel
+    val puedeCambiarPiel: Boolean get() = opciones.alCambiarPiel != null
+    val cuentaLecturas: Boolean get() = opciones.estudio != null
 
     private val _estado = MutableStateFlow(EstadoFeed())
     val estado: StateFlow<EstadoFeed> = _estado.asStateFlow()
@@ -100,7 +121,16 @@ class FeedViewModel(
     private var recarga: Job? = null
     private var ultimaFirma: FirmaTarjetas? = null
 
+    /** Tarjetas que este feed marcó "lo sé" (para la meta del pase: ArmadorFeed.disponibles). */
+    private val marcadasEnSesion = HashSet<Long>()
+
+    private var huboEscrituras = false
+    private var enPrimerPlano = false
+    private var recargaPendiente = false
+    private var vistoFuera = opciones.cambiosFuera?.value
+
     private fun escribir(bloque: suspend () -> Unit) {
+        huboEscrituras = true
         escrituras.removeAll { it.isCompleted }
         escrituras += alcanceApp.launch { bloque() }
     }
@@ -130,7 +160,54 @@ class FeedViewModel(
                 _estado.update { it.copy(procesando = materias.sumOf { m -> m.procesando }) }
             }
         }
+        opciones.cambiosFuera?.let { flujo ->
+            viewModelScope.launch {
+                // Lo que se leyó en la pantalla interceptada no tiene que reaparecer como nuevo.
+                flujo.collect { v ->
+                    if (v == vistoFuera) return@collect
+                    vistoFuera = v
+                    if (!cargado) return@collect
+                    if (enPrimerPlano) recargar(automatica = true) else recargaPendiente = true
+                }
+            }
+        }
     }
+
+    /** PantallaFeed (Inicio) lo llama al pasar a primer plano. */
+    fun alReanudar() {
+        enPrimerPlano = true
+        if (recargaPendiente) {
+            recargaPendiente = false
+            recargar(automatica = true)
+        }
+    }
+
+    fun alPausar() {
+        enPrimerPlano = false
+    }
+
+    override fun onCleared() {
+        val aviso = opciones.alCerrarConCambios ?: return
+        if (!huboEscrituras) return
+        val pendientes = escrituras.toList()
+        // alcanceApp sigue vivo: avisa cuando las escrituras terminan.
+        alcanceApp.launch {
+            pendientes.joinAll()
+            aviso()
+        }
+    }
+
+    /** La tarjeta en foco estuvo a la vista su tiempo de lectura (Lectura.msLectura). */
+    fun leida(tarjeta: TarjetaFeed) {
+        opciones.estudio?.alLeer(tarjeta.id)
+    }
+
+    /**
+     * Tarjetas no sabidas de todas las materias que no están en [ids] (para la meta del pase), o
+     * null si el feed todavía no cargó. Las marcadas "lo sé" en esta pantalla siguen contando.
+     */
+    fun disponiblesSin(ids: Set<Long>): Int? =
+        if (!cargado) null else ArmadorFeed.disponibles(todas, marcadasEnSesion, ids)
 
     /** Vuelve a leer las tarjetas (por ejemplo, después de importar un PDF) y rearma el feed. */
     fun recargar() = recargar(automatica = false)
@@ -176,7 +253,9 @@ class FeedViewModel(
         rearmar()
     }
 
-    fun cambiarPiel(piel: PielFeed) = ajustes.cambiarPiel(piel)
+    fun cambiarPiel(piel: PielFeed) {
+        opciones.alCambiarPiel?.invoke(piel)
+    }
 
     /** ♥ de una publicación: si todas sus tarjetas ya se saben, lo deshace; si no, las marca. */
     fun alternarSabida(post: PostFeed) {
@@ -205,14 +284,17 @@ class FeedViewModel(
         if (!contadas.add(tarjeta.id)) return
         vistasPendientes += tarjeta.id
         escribir { repositorio.marcarVista(tarjeta.id) }
+        opciones.estudio?.alVer(tarjeta.id)
     }
 
     fun marca(tarjeta: TarjetaFeed): MarcaTarjeta =
         _marcas.value[tarjeta.id] ?: MarcaTarjeta(sabida = tarjeta.sabida, guardada = tarjeta.guardada)
 
     private fun marcarSabidas(tarjetas: List<TarjetaFeed>, sabidas: Boolean) {
+        if (sabidas) marcadasEnSesion += tarjetas.filter { !marca(it).sabida }.map { it.id }
         _marcas.update { actuales -> actuales + tarjetas.associate { it.id to marca(it).copy(sabida = sabidas) } }
         escribir { repositorio.marcarSabidas(tarjetas.map { it.id }, sabidas) }
+        if (sabidas) opciones.estudio?.alMarcarSabidas(tarjetas.map { it.id })
     }
 
     private fun hayGuardadas(): Boolean = todas.any { marca(it).guardada }

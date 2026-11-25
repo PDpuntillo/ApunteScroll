@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import com.apuntescroll.R
 import com.apuntescroll.feed.FiltroFeed
+import com.apuntescroll.feed.Lectura
 import com.apuntescroll.feed.PostFeed
 import com.apuntescroll.feed.TarjetaFeed
 import com.apuntescroll.ui.componentes.margenesDeLista
@@ -69,7 +70,8 @@ import kotlinx.coroutines.delay
 
 /**
  * Carrusel (estilo Instagram): una sección por publicación, con sus tarjetas como diapositivas.
- * [margenes] no incluye la barra de arriba (la lista empieza debajo de ella).
+ * [margenes] no incluye la barra de arriba (la lista empieza debajo de ella). [cabecera] y [pie]
+ * van como primer y último elemento de la lista.
  */
 @Composable
 fun FeedCarrusel(
@@ -78,24 +80,37 @@ fun FeedCarrusel(
     margenes: PaddingValues,
     lista: LazyListState,
     acciones: AccionesFeed,
+    cabecera: @Composable () -> Unit = {},
+    pie: @Composable () -> Unit = {},
 ) {
     val visibles by remember(lista) { derivedStateOf { clavesVisibles(lista) } }
+    val foco by remember(lista) { derivedStateOf { claveEnFoco(lista) } }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // La diapositiva no pasa del alto visible de la lista (en horizontal, 4:5 ocuparía varias
         // pantallas): así al menos ella entra entera; el encabezado y las acciones se scrollean.
-        val altoMaximo = (maxHeight - margenes.calculateBottomPadding() - 16.dp).coerceAtLeast(160.dp)
+        // Con muy poco alto (horizontal en un teléfono) se permite que pase un poco: más bajita no
+        // entraría ni un renglón de texto.
+        val altoMaximo = (maxHeight - margenes.calculateBottomPadding() - 16.dp).coerceAtLeast(ALTO_MINIMO)
         LazyColumn(
             state = lista,
             modifier = Modifier.fillMaxSize(),
             contentPadding = margenesDeLista(margenes),
         ) {
+            item(key = CLAVE_CABECERA, contentType = CLAVE_CABECERA) { cabecera() }
             item(key = "historias", contentType = "historias") {
                 FilaHistorias(estado.materias, estado.filtro, estado.hayGuardadas, acciones.alFiltrar)
                 HorizontalDivider()
             }
             items(estado.posts, key = { it.clave }, contentType = { "carrusel" }) { post ->
-                PostCarrusel(post, marcas, visible = post.clave in visibles, acciones = acciones, altoMaximo = altoMaximo)
+                PostCarrusel(
+                    post,
+                    marcas,
+                    visible = post.clave in visibles,
+                    enFoco = post.clave == foco,
+                    acciones = acciones,
+                    altoMaximo = altoMaximo,
+                )
             }
             item(key = "fin", contentType = "fin") {
                 EstasAlDia(
@@ -105,6 +120,7 @@ fun FeedCarrusel(
                     alVerTodas = { acciones.alFiltrar(FiltroFeed.Todas) },
                 )
             }
+            item(key = CLAVE_PIE, contentType = CLAVE_PIE) { pie() }
         }
     }
 }
@@ -114,6 +130,7 @@ private fun PostCarrusel(
     post: PostFeed,
     marcas: Map<Long, MarcaTarjeta>,
     visible: Boolean,
+    enFoco: Boolean,
     acciones: AccionesFeed,
     altoMaximo: Dp,
 ) {
@@ -134,9 +151,10 @@ private fun PostCarrusel(
         )
         // 4:5 como Instagram, sin pasar de [altoMaximo].
         BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val alto = min(maxWidth * 1.25f, altoMaximo)
             HorizontalPager(
                 state = pager,
-                modifier = Modifier.fillMaxWidth().height(min(maxWidth * 1.25f, altoMaximo)),
+                modifier = Modifier.fillMaxWidth().height(alto),
                 key = { post.tarjetas[it].id },
             ) { i ->
                 val tarjeta = post.tarjetas[i]
@@ -148,6 +166,7 @@ private fun PostCarrusel(
                         null
                     },
                     sabida = marcas[tarjeta.id]?.sabida ?: tarjeta.sabida,
+                    compacta = alto < ALTO_COMPACTA,
                     alDobleToque = { acciones.alLoSeTarjeta(tarjeta) },
                     alSeguirLeyendo = { acciones.alAbrirHilo(tarjeta) },
                 )
@@ -168,18 +187,28 @@ private fun PostCarrusel(
 
     // La diapositiva actual cuenta como vista si la publicación está a la vista y el carrusel quieto.
     RegistrarVista(clave = actual.id, activo = visible && !pager.isScrollInProgress) { acciones.alVer(actual) }
+    // Para el pase (F3): la diapositiva actual de la publicación en foco, con el carrusel quieto.
+    acciones.alLeer?.let { alLeer ->
+        RegistrarVista(
+            clave = "l${actual.id}",
+            activo = enFoco && !pager.isScrollInProgress,
+            ms = Lectura.msLectura(actual.texto.length),
+        ) { alLeer(actual) }
+    }
 }
 
 /**
  * Una tarjeta como diapositiva: texto sobre el color de la materia, que se achica si no entra. Si
  * ni así entra, se corta con puntos suspensivos y aparece "Seguir leyendo", que abre el hilo en
- * esta tarjeta.
+ * esta tarjeta. [compacta]: la diapositiva es bajita (horizontal); márgenes y título más chicos
+ * para que entre texto.
  */
 @Composable
 private fun Diapositiva(
     tarjeta: TarjetaFeed,
     titulo: String?,
     sabida: Boolean,
+    compacta: Boolean,
     alDobleToque: () -> Unit,
     alSeguirLeyendo: () -> Unit,
 ) {
@@ -213,17 +242,19 @@ private fun Diapositiva(
             },
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 28.dp, vertical = if (compacta) 14.dp else 32.dp),
             verticalArrangement = Arrangement.Center,
         ) {
             if (titulo != null) {
                 Text(
                     titulo,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (compacta) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                     color = colores.contenido,
-                    maxLines = 2,
+                    maxLines = if (compacta) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(bottom = 16.dp).semantics { heading() },
+                    modifier = Modifier.padding(bottom = if (compacta) 6.dp else 16.dp).semantics { heading() },
                 )
             }
             BasicText(
@@ -289,3 +320,9 @@ private fun Puntos(total: Int, actual: Int, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** Alto mínimo de una diapositiva: con menos no entra texto entre el título y "Seguir leyendo". */
+private val ALTO_MINIMO = 200.dp
+
+/** Por debajo de este alto la diapositiva usa márgenes y título más chicos. */
+private val ALTO_COMPACTA = 320.dp

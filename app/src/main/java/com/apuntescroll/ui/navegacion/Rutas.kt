@@ -36,3 +36,11 @@ data object RutaPerfil
 
 @Serializable
 data object RutaAjustes
+
+/** El aviso y consentimiento de la intercepción (F3): pantalla propia, sin la barra de abajo. */
+@Serializable
+data object RutaAvisoIntercepcion
+
+/** El feed de la pantalla interceptada (FeedInterceptadoActivity, que tiene su propio NavHost). */
+@Serializable
+data object RutaFeedInterceptado

@@ -1,6 +1,7 @@
 package com.apuntescroll.ui.feed
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.apuntescroll.R
 import com.apuntescroll.datos.RepositorioApuntes
+import com.apuntescroll.feed.Lectura
 import com.apuntescroll.feed.PostFeed
 import com.apuntescroll.feed.TarjetaFeed
 import com.apuntescroll.ui.componentes.PantallaBase
@@ -56,9 +58,32 @@ fun PantallaHilo(
     alVolver: () -> Unit,
 ) {
     val tarjetas by hilo.tarjetas.collectAsStateWithLifecycle()
+    val primera = tarjetas?.firstOrNull()
+    PantallaBase(
+        titulo = primera?.let { it.tituloSeccion ?: stringResource(R.string.seccion_pagina, it.paginaInicioSeccion) } ?: "",
+        alVolver = alVolver,
+    ) { margenes ->
+        ContenidoHilo(hilo, feed, tarjetaId, margenes, alVolver)
+    }
+}
+
+/**
+ * El cuerpo del hilo completo (sin la barra de arriba). Lo usan Inicio y la pantalla interceptada
+ * (F3), donde además cuenta las lecturas para el pase.
+ */
+@Composable
+fun ContenidoHilo(
+    hilo: HiloViewModel,
+    feed: FeedViewModel,
+    tarjetaId: Long,
+    margenes: PaddingValues,
+    alVolver: () -> Unit,
+) {
+    val tarjetas by hilo.tarjetas.collectAsStateWithLifecycle()
     val marcas by feed.marcas.collectAsStateWithLifecycle()
     val lista = rememberLazyListState()
     val visibles by remember(lista) { derivedStateOf { clavesVisibles(lista) } }
+    val foco by remember(lista) { derivedStateOf { claveEnFoco(lista) } }
 
     val acciones = remember(feed) {
         AccionesFeed(
@@ -69,6 +94,7 @@ fun PantallaHilo(
             alAbrirHilo = {},
             alFiltrar = {},
             alVolverAEmpezar = {},
+            alLeer = if (feed.cuentaLecturas) feed::leida else null,
         )
     }
 
@@ -83,33 +109,32 @@ fun PantallaHilo(
         posicionado = true
     }
 
-    val primera = lista0?.firstOrNull()
-    PantallaBase(
-        titulo = primera?.let { it.tituloSeccion ?: stringResource(R.string.seccion_pagina, it.paginaInicioSeccion) } ?: "",
-        alVolver = alVolver,
-    ) { margenes ->
-        if (lista0 == null) {
-            Box(Modifier.fillMaxSize().padding(margenes), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else if (lista0.isEmpty()) {
-            // La sección ya no existe: se borró el PDF, o se rearmó y la sección cambió.
-            EstadoVacio(R.string.hilo_no_existe_titulo, R.string.hilo_no_existe, Modifier.padding(margenes)) {
-                Button(onClick = alVolver, modifier = Modifier.padding(top = 24.dp)) {
-                    Text(stringResource(R.string.accion_volver))
-                }
+    if (lista0 == null) {
+        Box(Modifier.fillMaxSize().padding(margenes), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    } else if (lista0.isEmpty()) {
+        // La sección ya no existe: se borró el PDF, o se rearmó y la sección cambió.
+        EstadoVacio(R.string.hilo_no_existe_titulo, R.string.hilo_no_existe, Modifier.padding(margenes)) {
+            Button(onClick = alVolver, modifier = Modifier.padding(top = 24.dp)) {
+                Text(stringResource(R.string.accion_volver))
             }
-        } else {
-            LazyColumn(state = lista, modifier = Modifier.fillMaxSize(), contentPadding = margenesDeLista(margenes)) {
-                itemsIndexed(lista0, key = { _, t -> t.id }) { i, t ->
-                    val post = PostFeed(clave = "t${t.id}", tarjetas = listOf(t), conTitulo = i == 0, totalSeccion = lista0.size)
-                    PostHilo(
-                        post = post,
-                        marca = marcas[t.id] ?: MarcaTarjeta(t.sabida, t.guardada),
-                        acciones = acciones,
-                        conBotonHilo = false,
-                    )
-                    RegistrarVista(clave = t.id, activo = t.id in visibles) { feed.vista(t) }
-                    HorizontalDivider()
+        }
+    } else {
+        LazyColumn(state = lista, modifier = Modifier.fillMaxSize(), contentPadding = margenesDeLista(margenes)) {
+            itemsIndexed(lista0, key = { _, t -> t.id }) { i, t ->
+                val post = PostFeed(clave = "t${t.id}", tarjetas = listOf(t), conTitulo = i == 0, totalSeccion = lista0.size)
+                PostHilo(
+                    post = post,
+                    marca = marcas[t.id] ?: MarcaTarjeta(t.sabida, t.guardada),
+                    acciones = acciones,
+                    conBotonHilo = false,
+                )
+                RegistrarVista(clave = t.id, activo = t.id in visibles) { feed.vista(t) }
+                acciones.alLeer?.let { alLeer ->
+                    RegistrarVista(clave = "l${t.id}", activo = t.id == foco, ms = Lectura.msLectura(t.texto.length)) {
+                        alLeer(t)
+                    }
                 }
+                HorizontalDivider()
             }
         }
     }
